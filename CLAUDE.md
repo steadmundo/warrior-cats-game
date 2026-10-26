@@ -29,7 +29,7 @@ on top of this file, so everything below applies to both.
   `camp`, `den`, `hunting`, `patrol`, `duel`, `herbs`, `healing`, `moonstone`, `ceremony`,
   `together`, ...). Each scene is just a root node with a script that builds the rest in code.
 - Autoloads (`project.godot`): `GameState` (the player's cat, story progress, save slots and
-  friendships), `Sfx`, `Transition`, `PauseMenu`.
+  friendships), `Sfx`, `Transition`, `PauseMenu`, `Net` (the online room connection).
 - All art is drawn in code with shapes: `cat.gd` draws the chibi cats, `scenery.gd` the
   backgrounds, `herb_art.gd` the herbs, `fx.gd` has particles, floating text and screen shake.
   There are no sprite images.
@@ -53,6 +53,17 @@ It runs the game for a few seconds and prints `OK` or the errors with file and l
 - `--hold move_right --hold jump@1-1.2 --seconds 3` presses input actions during the run;
   tap through the title screen with e.g. `--hold jump@0.5`.
 - `--scene res://scenes/camp.tscn` runs one scene.
+
+**Online mode:** it is a separate shared world, not a branch inside `territory.gd`. The room
+server is the Cloudflare Worker in `online/`; run it locally with
+`cd online && wrangler dev`, then press **O** on the title screen. Check the whole thing
+(client + worker + two players) with:
+
+```
+python3 tools/check_online.py
+```
+
+See `AGENTS.md` for the architecture, WebSocket protocol, deployment and current POC limits.
 
 ## Save points and history
 
@@ -90,9 +101,12 @@ workflows in `.github/workflows/` use it: `pages.yml` publishes the web version 
 ```
 ├── kids-vibe-code(.cmd)   # Starts kid mode (macOS/Linux, Windows)
 ├── history.md             # The story of the game so far, for the kids
+├── AGENTS.md              # Online-mode architecture, protocol and commands for agents
 ├── game/                  # The Godot project (scenes/, scripts/, assets/sounds/)
+├── online/                # Cloudflare Worker + Durable Object room server
 ├── tools/
 │   ├── check_game.py      # Runs the game and reports errors / takes a screenshot
+│   ├── check_online.py    # Starts the room server and runs the online smoke test
 │   ├── export_game.py     # Packages the game for web, Windows, macOS, Linux
 │   ├── make_sounds.py     # Generates the sound effects
 │   └── kids/              # Kid mode persona and permissions

@@ -469,3 +469,33 @@ A grown-up helper tidied up the project folder so it's all about Warrior Cats.
 ### What's next:
 - Make a Warrior Cats icon for the game (right now it shows "VG")
 - A Gathering at Fourtrees with the other Clans at the full moon
+
+## Session: 2026-10-26
+
+### What the creator asked for:
+A new way to play with friends who are far away, using a Cloudflare room server. Start small
+and make a proof of concept that works on this computer first.
+
+### What was built/changed:
+- **Online Play!** Press **O** on the title screen to choose one of your saved cats and make a
+  room. A friend on another computer presses **O**, types your four-letter room code, and joins
+  your camp.
+- **You can see each other**: your friend's cat appears in the camp with their name, their
+  colours and any paint they added. They can walk, pounce, and say little hellos with **E**.
+- The online camp is its own simple shared place. It uses the same camp and forest artwork, but
+  the story, saves, patrols and ceremonies are not shared yet.
+- **A little room server**: the `online/` folder has a Cloudflare Worker and Durable Object.
+  Each room is one Durable Object, and the server only passes messages between the players.
+- **A new check** (`python3 tools/check_online.py`) starts the room server on this computer,
+  plays a room with two cats, and makes sure the friend's cat appears and moves.
+- A new `AGENTS.md` explains how online mode works for grown-up helpers and future helpers.
+
+### What you can do now:
+- Press **O**, make a room, and walk around the shared camp with a friend
+- Press **E** to say hello to your friend's cat
+- Run `python3 tools/check_online.py` to check that online play still works
+
+### What's next:
+- Share the same patrols, prey and ceremonies online
+- A proper chat box, so you can type what you want to say
+- A Gathering at Fourtrees with the other Clans at the full moon

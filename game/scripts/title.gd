@@ -37,6 +37,7 @@ func _ready() -> void:
 	_start_label = Fx.centered_label("Press SPACE to start!", 40, Color("9be37a"), 230)
 	ui.add_child(_start_label)
 	ui.add_child(Fx.centered_label("2 players?  Player 2 presses E to play together!", 28, Color("ffb3c8"), 282))
+	ui.add_child(Fx.centered_label("Press O for Online Play (separate devices)!", 24, Color("9be3ff"), 320))
 	var controls := Fx.centered_label("Arrows = walk and choose    SPACE = jump, pounce, talk, OK    ESC = menu", 26,
 			Color("f6e8c8"), 660)
 	ui.add_child(controls)
@@ -55,6 +56,9 @@ func _process(delta: float) -> void:
 		# Player 2 joins in! Both players pick their cats next.
 		Sfx.play("powerup")
 		Transition.go("res://scenes/together_pick.tscn")
+	elif Input.is_action_just_pressed("online"):
+		Sfx.play("select")
+		Transition.go("res://scenes/online_lobby.tscn")
 
 
 func _draw() -> void:

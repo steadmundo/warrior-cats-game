@@ -5,11 +5,12 @@ by describing their ideas to [Claude Code](https://claude.com/claude-code).
 
 Design your own cat, leave your Twoleg garden to join ThunderClan, and live the first book's
 story as the main character: hunting, border patrols, play-fights and your warrior ceremony,
-or train as a medicine cat and visit the Moonstone. Then keep living in the Clan, or play
-**ThunderClan Together** with a friend on the same keyboard.
+or train as a medicine cat and visit the Moonstone. Then keep living in the Clan, play
+**ThunderClan Together** with a friend on the same keyboard, or visit a shared camp in
+**Online Play**.
 
 **Controls:** arrow keys to walk and choose, SPACE to jump, pounce, talk and OK, ESC for the
-menu. Player 2 uses WASD and E.
+menu. Player 2 uses WASD and E. Press **O** on the title screen for Online Play.
 
 ## Play it
 
@@ -23,6 +24,39 @@ menu. Player 2 uses WASD and E.
 
 *This is an unofficial fan project, not affiliated with Erin Hunter or the Warriors
 publishers.*
+
+## Playing online (proof of concept)
+
+Online Play puts you and a friend in a shared camp on two different computers. It is new and
+deliberately simple: you can see each other's cats, walk around, pounce, and say hello. Story
+progress, saves, patrols and Clan ceremonies stay single-player for now.
+
+It needs the little Cloudflare room server in `online/`. To try it on your own network:
+
+```bash
+# Terminal 1 — the room server
+cd online
+wrangler dev --port 8787 --ip 0.0.0.0
+
+# Terminal 2 — the game
+godot --path game
+```
+
+Press **O** on the title screen, choose a saved cat, and press **Create a Room**. Tell your
+friend the four-letter code; they press **O**, choose their cat, type the code and press
+**Join**. The online lobby's **Server** box points at `http://127.0.0.1:8787` by default —
+change it to `http://<your-computer's-LAN-IP>:8787` so the second computer can reach it.
+
+To run the whole thing automatically (starts a worker, plays a room end to end, stops it):
+
+```bash
+python3 tools/check_online.py
+```
+
+For a hosted version, deploy the worker with `cd online && wrangler deploy`, then put its
+`https://…workers.dev` address in the lobby's **Server** box. A web build served over HTTPS
+must use that HTTPS address — it cannot reach a server on your own computer. See `AGENTS.md`
+for the full architecture and current limits.
 
 ## Working on the game
 
@@ -52,6 +86,7 @@ and how to check changes.
 | Command | What it does |
 |---|---|
 | `python3 tools/check_game.py` | Runs the game for a few seconds and reports any errors (`--screenshot` to see it) |
+| `python3 tools/check_online.py` | Starts the room server and checks online play end to end |
 | `python3 tools/export_game.py` | Builds the packages below (`web --serve` to play the web build locally) |
 | `python3 tools/make_sounds.py` | Regenerates the sound effects in `game/assets/sounds/` |
 
