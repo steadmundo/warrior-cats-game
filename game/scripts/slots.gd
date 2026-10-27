@@ -18,7 +18,11 @@ func _ready() -> void:
 	add_child(_ui)
 	_ui.add_child(Fx.centered_label("Choose a Save Slot", 52, Color("ffd966"), 20))
 	_ui.add_child(Fx.centered_label("LEFT/RIGHT = pick    UP/DOWN = Play or Erase    SPACE = go!", 22,
-			Color("fff6ec"), 680))
+			Color("fff6ec"), 660))
+	_ui.add_child(Fx.centered_label("ESC = back to title", 22, Color("fff6ec"), 696))
+	var sound := SoundButton.new()
+	sound.position = SoundButton.CORNER
+	_ui.add_child(sound)
 	_build()
 
 
@@ -137,6 +141,10 @@ func _process(delta: float) -> void:
 	_time += delta
 	queue_redraw()
 	if Transition.is_busy():
+		return
+	if Input.is_action_just_pressed("menu"):
+		Sfx.play("click")
+		Transition.go("res://scenes/title.tscn")
 		return
 	var has_save := not _infos[_selected].is_empty()
 	if Input.is_action_just_pressed("move_right") or Input.is_action_just_pressed("move_left"):

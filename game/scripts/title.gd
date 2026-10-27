@@ -34,10 +34,21 @@ func _ready() -> void:
 	add_child(ui)
 	ui.add_child(Fx.centered_label("WARRIOR CATS", 96, Color("ffd966"), 46))
 	ui.add_child(Fx.centered_label("Into the Wild", 44, Color("fff6ec"), 164))
-	_start_label = Fx.centered_label("Press SPACE to start!", 40, Color("9be37a"), 230)
-	ui.add_child(_start_label)
-	ui.add_child(Fx.centered_label("2 players?  Player 2 presses E to play together!", 28, Color("ffb3c8"), 282))
-	ui.add_child(Fx.centered_label("Press O for Online Play (separate devices)!", 24, Color("9be3ff"), 320))
+	
+	var panel := Panel.new()
+	panel.position = Vector2(320, 220)
+	panel.size = Vector2(640, 230)
+	panel.add_theme_stylebox_override("panel", Fx.cute_panel(30))
+	ui.add_child(panel)
+	
+	panel.add_child(Fx.centered_label("Choose how to play!", 38, Color("ffd966"), 16, 640))
+	panel.add_child(Fx.centered_label("SPACE = Play Solo", 38, Color("9be37a"), 78, 640))
+	panel.add_child(Fx.centered_label("E = Play Together on this computer", 36, Color("ffb3c8"), 138, 640))
+	panel.add_child(Fx.centered_label("O = Play Together Online", 36, Color("9be3ff"), 194, 640))
+	
+	var sound := SoundButton.new()
+	sound.position = SoundButton.CORNER
+	ui.add_child(sound)
 	var controls := Fx.centered_label("Arrows = walk and choose    SPACE = jump, pounce, talk, OK    ESC = menu", 26,
 			Color("f6e8c8"), 660)
 	ui.add_child(controls)
@@ -45,7 +56,8 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_time += delta
-	_start_label.modulate.a = 0.55 + 0.45 * sin(_time * 4.0)
+	if _start_label != null:
+		_start_label.modulate.a = 0.55 + 0.45 * sin(_time * 4.0)
 	queue_redraw()
 	if Transition.is_busy():
 		return

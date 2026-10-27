@@ -30,6 +30,9 @@ func _ready() -> void:
 	var ui := CanvasLayer.new()
 	add_child(ui)
 	ui.add_child(Fx.centered_label("Play Together!", 52, Color("ffd966"), 16))
+	var sound := SoundButton.new()
+	sound.position = SoundButton.CORNER
+	ui.add_child(sound)
 	if _cats.size() < 2:
 		var sorry := Fx.centered_label("To play together you need TWO cats!\n\nMake another cat in an empty save slot first,\nthen come back and press E on the title screen.",
 				32, Color("fff6ec"), 220)

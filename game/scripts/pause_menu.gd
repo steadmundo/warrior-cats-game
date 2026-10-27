@@ -1,5 +1,6 @@
 extends CanvasLayer
-## Press ESC any time to pause: keep playing, or go back to the title screen.
+## Press ESC any time to pause: keep playing, mute the sound, or go back to the title screen.
+## M mutes the sound in any scene, even without opening this menu.
 ## The game saves by itself after every chapter, so going back is safe.
 
 const NO_MENU_SCENES := ["res://scenes/title.tscn", "res://scenes/slots.tscn"]
@@ -18,8 +19,8 @@ func _ready() -> void:
 	dim.size = Vector2(1280, 720)
 	add_child(dim)
 	_panel = Panel.new()
-	_panel.position = Vector2(390, 190)
-	_panel.size = Vector2(500, 340)
+	_panel.position = Vector2(390, 160)
+	_panel.size = Vector2(500, 400)
 	_panel.add_theme_stylebox_override("panel", Fx.cute_panel(30))
 	dim.add_child(_panel)
 	var title := Fx.centered_label("Paused", 50, Fx.PINK_DARK, 24, 500)
@@ -29,7 +30,7 @@ func _ready() -> void:
 		var b := Button.new()
 		b.text = ["Keep playing", "Back to title screen"][i]
 		b.focus_mode = Control.FOCUS_NONE
-		b.position = Vector2(70, 120 + i * 90)
+		b.position = Vector2(70, 100 + i * 86)
 		b.size = Vector2(360, 66)
 		b.add_theme_font_size_override("font_size", 30)
 		b.add_theme_color_override("font_color", Fx.INK)
@@ -39,10 +40,25 @@ func _ready() -> void:
 			_pick())
 		_panel.add_child(b)
 		_buttons.append(b)
+	# Sound sits apart, below the two choices, so it never gets picked by accident
+	var sound := SoundButton.new()
+	sound.position = Vector2(70, 276)
+	sound.size = Vector2(360, 56)
+	sound.add_theme_font_size_override("font_size", 26)
+	_panel.add_child(sound)
+	var hint := Fx.centered_label("Press M any time to mute the sound", 20, Fx.INK, 342, 500)
+	hint.add_theme_constant_override("outline_size", 0)
+	_panel.add_child(hint)
 	visible = false
 
 
 func _process(_delta: float) -> void:
+	if Input.is_action_just_pressed("mute"):
+		# Works in every scene, even on the title screen, so a grown-up can hush it fast
+		Sfx.toggle_muted()
+		if not Sfx.muted:
+			Sfx.play("select")
+		return
 	if Input.is_action_just_pressed("menu"):
 		if visible:
 			_close()
@@ -52,7 +68,8 @@ func _process(_delta: float) -> void:
 	if not visible:
 		return
 	if Input.is_action_just_pressed("move_up") or Input.is_action_just_pressed("move_down"):
-		_choice = 1 - _choice
+		var dir := -1 if Input.is_action_just_pressed("move_up") else 1
+		_choice = wrapi(_choice + dir, 0, _buttons.size())
 		Sfx.play("click")
 		_refresh()
 	elif Input.is_action_just_pressed("jump") or Input.is_action_just_pressed("action"):
