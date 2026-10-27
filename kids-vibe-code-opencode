@@ -1,0 +1,36 @@
+#!/bin/bash
+# Kids Vibe Code for opencode: opens the game in Godot and starts opencode as a friendly
+# game-making buddy for kids aged 7-12.
+#
+#   ./kids-vibe-code-opencode
+#
+# This is the opencode twin of ./kids-vibe-code (which uses Claude Code). It gives the kid the
+# same persona and the same restricted permissions (tools/kids/settings.json there, the
+# permission block in .opencode/agent/kids.md here).
+#
+# The kid's session is isolated from the grown-up's own opencode setup: XDG_CONFIG_HOME points
+# at tools/kids/opencode-home, so the grown-up's MCP servers, agents, plugins and skills are
+# not loaded. XDG_DATA_HOME is left alone, so login still works.
+
+cd "$(dirname "$0")" || exit 1
+
+if ! command -v opencode >/dev/null 2>&1; then
+    echo "opencode isn't installed (the 'opencode' command wasn't found)."
+    exit 1
+fi
+
+# Open the game in the Godot editor so the Play button is ready, unless it's open already
+GODOT="${GODOT:-$(command -v godot || command -v godot4)}"
+if [ -z "$GODOT" ] && [ -x /Applications/Godot.app/Contents/MacOS/Godot ]; then
+    GODOT=/Applications/Godot.app/Contents/MacOS/Godot
+fi
+if [ -n "$GODOT" ] && ! pgrep -f -- "--path $PWD/game" >/dev/null; then
+    nohup "$GODOT" --path "$PWD/game" --editor >/dev/null 2>&1 &
+fi
+
+# Keep the grown-up's own setup out of the kid's session (see tools/kids/opencode-home/README.md)
+export XDG_CONFIG_HOME="$PWD/tools/kids/opencode-home"
+export OPENCODE_DISABLE_EXTERNAL_SKILLS=1
+export OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1
+
+exec opencode --agent kids "$@"
