@@ -12,6 +12,9 @@ var _status: Label
 var _slot_buttons: Array[Button] = []
 var _create_button: Button
 var _join_button: Button
+var _first_cat_button: Button
+var _step2_label: Label
+var _join_hint: Label
 var _room_input: LineEdit
 var _server_input: LineEdit
 var _selected_slot := -1
@@ -21,12 +24,16 @@ var _time := 0.0
 
 
 func _ready() -> void:
+	GameState.return_to_online = false  # only set while we are off making a first cat
 	var ui := CanvasLayer.new()
 	add_child(ui)
 
 	ui.add_child(Fx.centered_label("Play Together Online", 52, Color("ffd966"), 24))
 	ui.add_child(Fx.centered_label("Two devices, one camp — play with a friend far away!", 24,
 			Color("fff6ec"), 88))
+	var sound := SoundButton.new()
+	sound.position = SoundButton.CORNER
+	ui.add_child(sound)
 
 	var panel := Panel.new()
 	panel.position = Vector2(110, 130)
@@ -45,6 +52,7 @@ func _ready() -> void:
 		_slot_buttons.append(button)
 
 	var make := Fx.ink_label("2. Make a room, or join one", 30, Fx.PINK_DARK)
+	_step2_label = make
 	make.position = Vector2(30, 174)
 	panel.add_child(make)
 
@@ -54,6 +62,7 @@ func _ready() -> void:
 	panel.add_child(_create_button)
 
 	var join_hint := Fx.ink_label("Room code:", 24, Fx.INK)
+	_join_hint = join_hint
 	join_hint.position = Vector2(392, 238)
 	join_hint.size = Vector2(140, 40)
 	panel.add_child(join_hint)
@@ -72,6 +81,12 @@ func _ready() -> void:
 	_join_button.add_theme_font_size_override("font_size", 28)
 	_join_button.pressed.connect(_join_room)
 	panel.add_child(_join_button)
+
+	# Shown instead of the room buttons when there is no saved cat yet
+	_first_cat_button = _make_button("Make your first cat!", Color("7ad67a"), Vector2(30, 218), Vector2(740, 72))
+	_first_cat_button.add_theme_font_size_override("font_size", 34)
+	_first_cat_button.pressed.connect(_make_first_cat)
+	panel.add_child(_first_cat_button)
 
 	_status = Fx.ink_label("", 22, Fx.INK)
 	_status.position = Vector2(30, 322)
@@ -115,7 +130,7 @@ func _ready() -> void:
 				_select_slot(i)
 				break
 	if _selected_slot < 0:
-		_set_status("Make a cat in the story first, then come back to play online!")
+		_set_status("You need a cat before you can play online — it only takes a minute!")
 	_refresh_slots()
 	_refresh_buttons()
 
@@ -144,7 +159,7 @@ func _select_slot(i: int) -> void:
 		return
 	var info := GameState.describe_slot(i)
 	if info.is_empty():
-		_set_status("Slot %d is empty. Play the story once to make a cat there!" % (i + 1))
+		_set_status("Slot %d is empty. Press 'Make your first cat!' and come back!" % (i + 1))
 		return
 	if not GameState.load_game(i):
 		_set_status("That save could not be opened. Try another slot.")
@@ -167,12 +182,42 @@ func _refresh_slots() -> void:
 				Color("fff0f5") if picked else Color("f3e6ea"),
 				Fx.PINK_DARK if picked else Color.WHITE, 18, 6 if picked else 3))
 		_slot_buttons[i].add_theme_color_override("font_color", Fx.INK)
+	_refresh_flow()
 
 
 func _refresh_buttons() -> void:
 	var ready := _selected_slot >= 0 and not _busy
 	_create_button.disabled = not ready
 	_join_button.disabled = not ready
+	_first_cat_button.disabled = _busy
+
+
+## With no saved cat at all, the room buttons cannot work: offer the story's cat maker instead.
+func _refresh_flow() -> void:
+	var has_cat := _has_any_cat()
+	_first_cat_button.visible = not has_cat
+	_create_button.visible = has_cat
+	_join_button.visible = has_cat
+	_room_input.visible = has_cat
+	_join_hint.visible = has_cat
+	_step2_label.text = "2. Make a room, or join one" if has_cat else "2. Make your first cat!"
+
+
+func _has_any_cat() -> bool:
+	for i in GameState.SAVE_SLOTS:
+		if not GameState.describe_slot(i).is_empty():
+			return true
+	return false
+
+
+## The story's usual cat maker (name, looks, paint) is the only way to make a cat.
+## We go there, and `GameState.return_to_online` brings us back here when it is done.
+func _make_first_cat() -> void:
+	if _busy:
+		return
+	GameState.return_to_online = true
+	Sfx.play("select")
+	Transition.go("res://scenes/slots.tscn")
 
 
 # --- Making and joining rooms ----------------------------------------------------------------

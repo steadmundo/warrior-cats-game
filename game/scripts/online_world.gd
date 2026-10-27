@@ -16,6 +16,11 @@ const LOCAL_COLOR := Color("ffd966")
 const REMOTE_COLORS := [Color("ff9ec0"), Color("9be3ff"), Color("c9f7a8"), Color("e7c6ff"),
 		Color("ffb38a"), Color("b8d4ff"), Color("ffe08a")]
 const EMOTES := ["Mew!", "Hello!", "Let's play!", "Follow me!", "Race you!", "Nice catch!", "Purr..."]
+const INFO_X := 930.0
+const INFO_Y := 10.0
+const INFO_W := 334.0
+const INFO_TOP := 74.0
+const INFO_ROW_H := 56.0
 
 var world: Node2D
 var player: TopDownPlayer
@@ -26,7 +31,10 @@ var playing := false
 var _hud: CanvasLayer
 var _room_label: Label
 var _count_label: Label
-var _names_label: Label
+var _info_panel: Panel
+var _info_body: Control
+var _info_open := false
+var _info_sig := ""
 var _card: InfoCard
 var _leaving := false
 var _emote_index := 0
@@ -161,52 +169,154 @@ func _make_hud() -> void:
 	title_label.size = Vector2(520, 30)
 	_hud.add_child(title_label)
 
-	var panel := Panel.new()
-	panel.position = Vector2(930, 10)
-	panel.size = Vector2(334, 150)
-	panel.add_theme_stylebox_override("panel", Fx.cute_panel(20))
-	_hud.add_child(panel)
+	# Room info stays out of the way until TAB is held: then this box drops down with the
+	# room code, how many cats are here, and a row for each of them.
+	_info_panel = Panel.new()
+	_info_panel.position = Vector2(INFO_X, INFO_Y)
+	_info_panel.size = Vector2(INFO_W, 150)
+	_info_panel.add_theme_stylebox_override("panel", Fx.cute_panel(20))
+	_info_panel.visible = false
+	_hud.add_child(_info_panel)
 	_room_label = Fx.ink_label("Room " + Net.room_code, 30, Fx.PINK_DARK)
-	_room_label.position = Vector2(16, 10)
+	_room_label.position = Vector2(16, 8)
 	_room_label.size = Vector2(302, 36)
 	_room_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	panel.add_child(_room_label)
+	_info_panel.add_child(_room_label)
 	_count_label = Fx.ink_label("", 20, Fx.INK)
-	_count_label.position = Vector2(16, 50)
+	_count_label.position = Vector2(16, 46)
 	_count_label.size = Vector2(302, 24)
 	_count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	panel.add_child(_count_label)
-	_names_label = Fx.ink_label("", 19, Fx.INK)
-	_names_label.position = Vector2(16, 78)
-	_names_label.size = Vector2(302, 64)
-	_names_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_names_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	_names_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	panel.add_child(_names_label)
+	_info_panel.add_child(_count_label)
+	_info_body = Control.new()
+	_info_body.position = Vector2(0, INFO_TOP)
+	_info_body.size = Vector2(INFO_W, 24)
+	_info_panel.add_child(_info_body)
 
-	var keys := Fx.make_label("Arrows = walk    SPACE = pounce    E = say hello    ESC = menu",
+	var keys := Fx.make_label("Arrows = walk    SPACE = pounce    E = say hello    TAB = room info    ESC = menu",
 			22, Color("fff6ec"), 6)
 	keys.position = Vector2(16, 684)
-	keys.size = Vector2(1000, 30)
+	keys.size = Vector2(1150, 30)
 	_hud.add_child(keys)
 	_refresh_room_hud()
 
 
 func _refresh_room_hud() -> void:
-	if _hud == null:
+	if _info_panel == null:
 		return
+	var entries := _who_entries()
+	_count_label.text = "%d cat%s together" % [entries.size(), "" if entries.size() == 1 else "s"]
 	var names: Array[String] = []
-	var local := str(GameState.describe_slot(GameState.slot).get("name", "You"))
-	names.append(local + " (you)")
+	for entry in entries:
+		names.append(str(entry.get("name", "")))
+	var signature := ",".join(names)
+	if not _info_open or signature == _info_sig:
+		return  # hidden, or nothing changed: leave the rows alone
+	_info_sig = signature
+	_build_info_body(entries)
+
+
+## One row per cat: name tag colour, fur, name and Clan title.
+func _build_info_body(entries: Array) -> void:
+	for child in _info_body.get_children():
+		_info_body.remove_child(child)
+		child.queue_free()
+	for i in entries.size():
+		var entry: Dictionary = entries[i]
+		var y := i * INFO_ROW_H
+		var tag := ColorRect.new()  # matches the colour of their name tag in the world
+		tag.color = entry.tag
+		tag.position = Vector2(16, y + 10)
+		tag.size = Vector2(6, 30)
+		_info_body.add_child(tag)
+		var fur := Panel.new()  # a little fur-colour swatch, like their cat
+		fur.position = Vector2(30, y + 9)
+		fur.size = Vector2(30, 30)
+		fur.add_theme_stylebox_override("panel", Fx.panel_style(entry.fur, Color.WHITE, 9, 2))
+		_info_body.add_child(fur)
+		var row_name := Fx.ink_label(str(entry.name) + ("  (you)" if entry.you else ""), 22, Fx.INK)
+		row_name.position = Vector2(70, y - 2)
+		row_name.size = Vector2(250, 28)
+		row_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		_info_body.add_child(row_name)
+		var row_title := str(entry.title)
+		var title_text := row_title if row_title != "" else "ThunderClan cat"
+		var row_sub := Fx.ink_label(title_text, 16, Fx.PINK_DARK)
+		row_sub.position = Vector2(70, y + 24)
+		row_sub.size = Vector2(250, 22)
+		row_sub.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		_info_body.add_child(row_sub)
+	var body_height := entries.size() * INFO_ROW_H
+	if entries.size() < 2:
+		var alone := Fx.ink_label("Just you — invite a friend!", 17, Fx.PINK_DARK)
+		alone.position = Vector2(16, body_height + 2)
+		alone.size = Vector2(302, 24)
+		alone.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_info_body.add_child(alone)
+		body_height += 26
+	_info_panel.size = Vector2(INFO_W, INFO_TOP + body_height + 12)
+
+
+## Room info is on screen only while TAB is held.
+func _set_info_open(open: bool) -> void:
+	if _info_open == open:
+		return
+	_info_open = open
+	_info_panel.visible = open
+	if open:
+		_info_sig = ""  # build fresh every time, so it always names who is here right now
+		_refresh_room_hud()
+		Sfx.play("click")
+
+
+## You first, then everybody else in the room by name.
+func _who_entries() -> Array:
+	var entries := []
+	var mine := GameState.describe_slot(GameState.slot)
+	if not mine.is_empty():
+		var look: Dictionary = mine.get("look", {})
+		entries.append({
+			"name": str(mine.get("name", "You")),
+			"title": str(mine.get("title", "")),
+			"fur": _fur_color(look),
+			"tag": LOCAL_COLOR,
+			"you": true,
+		})
+	var friends := []
 	for pid in Net.players:
-		var player_data = Net.players[pid]
-		if str(pid) == Net.player_id or not player_data is Dictionary:
+		if str(pid) == Net.player_id:
 			continue
-		var friend_name := str(player_data.get("name", ""))
-		if friend_name != "":
-			names.append(friend_name)
-	_count_label.text = "%d cat%s together" % [names.size(), "" if names.size() == 1 else "s"]
-	_names_label.text = "\n".join(names)
+		var data = Net.players[pid]
+		if not data is Dictionary:
+			continue
+		var friend_name := str(data.get("name", ""))
+		if friend_name == "":
+			continue
+		var cat_data := {}
+		if data.get("catData") is Dictionary:
+			cat_data = data.catData
+		var tag := Color("ff9ec0")
+		if remotes.has(str(pid)):
+			tag = (remotes[str(pid)] as RemotePlayer).name_color
+		friends.append({
+			"name": friend_name,
+			"title": str(cat_data.get("title", "")),
+			"fur": _fur_color(cat_data),
+			"tag": tag,
+			"you": false,
+		})
+	friends.sort_custom(func(a, b): return str(a.name).nocasecmp_to(str(b.name)) < 0)
+	entries.append_array(friends)
+	return entries
+
+
+## A cat's fur colour, whether it comes from a save (Color) or over the wire (hex string)
+static func _fur_color(cat: Dictionary) -> Color:
+	var fur = cat.get("fur", null)
+	if fur is Color:
+		return fur
+	if fur is String and str(fur) != "":
+		return Color.from_string(str(fur), Color("e8862a"))
+	return Color("e8862a")
 
 
 func _show_banner(text: String) -> void:
@@ -231,6 +341,8 @@ func _process(delta: float) -> void:
 			player.is_pouncing())
 	if Input.is_action_just_pressed("online_emote"):
 		_say_emote()
+	if Input.is_action_pressed("online_players") != _info_open:
+		_set_info_open(not _info_open)
 
 
 func _say_emote() -> void:

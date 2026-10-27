@@ -5,6 +5,7 @@ extends Node
 ##   3. opens the real online world scene
 ##   4. connects a second, raw WebSocket player and sends a hello + movement
 ##   5. checks that the world spawned that player's cat in the right place
+##   6. checks the TAB room info box is hidden, opens on TAB and lists both cats
 ##
 ## Run it with:  python3 tools/check_online.py
 ## (or: XDG_DATA_HOME=/tmp/warrior-online godot --headless --path game tests/online_smoke.tscn)
@@ -121,7 +122,29 @@ func _process(delta: float) -> void:
 			_finish(false, "the friend's movement never arrived (target %s)" % remote.target_pos)
 		return
 
-	_finish(true, "room %s, friend spawned at %s" % [_room, remote.target_pos])
+	# The room info box should be hidden until TAB, then name both cats
+	if _world._info_panel.visible:
+		_finish(false, "the room info box was on screen without TAB being held")
+		return
+	var entries: Array = _world._who_entries()
+	var names: Array[String] = []
+	for entry in entries:
+		names.append(str(entry.get("name", "")))
+	if entries.size() != 2 or not names.has("Sandpaw"):
+		if _elapsed > TIMEOUT:
+			_finish(false, "the room info box showed %s instead of both cats" % str(names))
+		return
+	_world._set_info_open(true)
+	if not _world._info_open or not _world._info_panel.visible:
+		_finish(false, "the room info box did not open on TAB")
+		return
+	_world._set_info_open(false)
+	if _world._info_panel.visible:
+		_finish(false, "the room info box stayed on screen after TAB was let go")
+		return
+
+	_finish(true, "room %s, friend spawned at %s, room info lists %s" % [
+			_room, remote.target_pos, ", ".join(names)])
 
 
 func _finish(ok: bool, message: String) -> void:

@@ -168,6 +168,7 @@ var activity := ""  # "free_hunt" or "teach_battle" when it's not part of the st
 var den := ""  # which den you're visiting
 var hunt_buddy := -1  # the slot of a friend who came hunting with you (-1 = nobody)
 var together: Array = []  # two players on one keyboard: [Player 1's slot, Player 2's slot]
+var return_to_online := false  # Online Play sent us to make/pick a cat: go back there after
 
 
 func look() -> Dictionary:
@@ -323,6 +324,8 @@ func complete_step() -> void:
 
 
 func start_step() -> void:
+	if back_to_online_if_asked():
+		return
 	activity = ""
 	Transition.go(current().scene)
 
@@ -421,8 +424,20 @@ func erase_slot(i: int) -> void:
 	forget_friends(i)
 
 
+## Online Play sends a cat-less kid to the save slots to make their first cat. When that is
+## done we go back to the online lobby instead of starting the story.
+func back_to_online_if_asked() -> bool:
+	if not return_to_online:
+		return false
+	return_to_online = false
+	Transition.go("res://scenes/online_lobby.tscn")
+	return true
+
+
 ## Go to wherever this save left off
 func continue_game() -> void:
+	if back_to_online_if_asked():
+		return
 	if met_clan or is_grown():
 		Transition.go("res://scenes/camp.tscn")
 	else:
