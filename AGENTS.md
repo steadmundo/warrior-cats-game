@@ -163,19 +163,30 @@ Godot note: `godot --headless --path game --script something.gd` does **not** lo
 
 ### Deploying the room server
 
+The room server is already deployed for this project:
+
+```
+https://warrior-cats-online.maast85.workers.dev      # worker: warrior-cats-online
+```
+
+Redeploy after changing `online/src/index.js`:
+
 ```bash
 cd online
 wrangler login          # once
 wrangler deploy
 ```
 
-Then open Online Play, put the deployed `https://<worker>.workers.dev` URL in the **Server**
-box, press **Apply**, and create a room. The Worker returns a `wss://` URL when it is reached
-over HTTPS, so no client change is needed for deployment.
+`Net.default_server_url()` gives native builds `http://127.0.0.1:8787` and web builds the
+deployed worker (`PUBLIC_SERVER_URL` in `game/scripts/net.gd` — update that constant if the
+worker is ever deployed somewhere else). The lobby's **Server** box still overrides it and is
+remembered in `user://online.cfg`; applying an empty box goes back to the built-in default.
+The Worker returns a `wss://` URL when it is reached over HTTPS, so no client change is needed
+for deployment.
 
 Web build note: a page served over HTTPS cannot connect to `ws://127.0.0.1`, and a player's
-browser cannot reach the developer's local worker. A hosted build therefore needs the deployed
-HTTPS worker URL. Single-player still works without any server.
+browser cannot reach the developer's local worker. That is why the hosted build defaults to the
+deployed worker. Single-player still works without any server.
 
 ### Known POC limits (do not assume these work)
 

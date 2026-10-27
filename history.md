@@ -535,3 +535,17 @@ lobby with nothing to do.
 - A proper chat box, so you can type what you want to say
 - Let a cat carry its name and colours to another computer (a "cat code")
 - A Gathering at Fourtrees with the other Clans at the full moon
+
+## Session: 2026-10-27 (part 2)
+
+### What the creator asked for:
+The online game worked on this computer, but it needed to work for everybody — on a real website,
+with a real room server — and the room box needed to stay out of the way while playing.
+
+### What was built/changed:
+- The room server now lives on Cloudflare, so two players anywhere can share a camp instead of
+  only two computers in the same house
+- The website version of the game already knows where that server is, so nobody has to type an
+  address to play online
+- The room info box is now completely hidden until you **hold TAB**, so nothing covers the camp
+  while you play
