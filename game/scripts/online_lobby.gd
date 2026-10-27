@@ -2,9 +2,9 @@ extends Node2D
 ## Online Play: choose one of your saved cats, then make a room or join a friend's.
 ## This is the front door to the shared camp in `online_world.gd`.
 ##
-## The room server is the Cloudflare Worker in `online/`. For local testing it runs at
-## http://127.0.0.1:8787; the server box at the bottom of the screen can point at a
-## deployed worker later.
+## The room server is the Cloudflare Worker in `online/`. A grown-up can run it on this
+## computer at http://127.0.0.1:8787, or deploy it to Cloudflare; the server box at the
+## bottom of the screen can point somewhere else. See Net.default_server_url().
 
 const SERVER_HINT := "Server (press Apply after changing)"
 

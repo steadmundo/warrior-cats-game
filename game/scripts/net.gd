@@ -4,7 +4,9 @@ extends Node
 ##
 ## The room server is the little Cloudflare Worker in `online/`. Run it locally with
 ##   cd online && npx wrangler dev
-## and the game talks to http://127.0.0.1:8787 by default.
+## and the game talks to http://127.0.0.1:8787 by default. The browser build talks to
+## the deployed worker instead (see PUBLIC_SERVER_URL), because a page on the web cannot
+## reach your computer at 127.0.0.1.
 ##
 ## A room only carries player positions, their cats and little emotes. Everything else
 ## (the story, saves, Clan cats) stays on each player's own computer.
@@ -19,12 +21,17 @@ signal players_updated(players: Dictionary)
 signal event_received(event: Dictionary)
 signal chat_received(message: Dictionary)
 
+## The room server running on this computer, for playing with somebody nearby.
 const DEFAULT_SERVER_URL := "http://127.0.0.1:8787"
+## The public room server the browser build uses. A page served over HTTPS cannot reach
+## http://127.0.0.1, and cannot use ws:// at all, so the hosted game needs a real one.
+## Deploy it with:  cd online && npx wrangler deploy
+const PUBLIC_SERVER_URL := "https://warrior-cats-online.maast85.workers.dev"
 const CONFIG_PATH := "user://online.cfg"
 const CONNECT_TIMEOUT := 10.0
 const PING_EVERY := 20.0
 
-var server_url := DEFAULT_SERVER_URL
+var server_url := ""
 var in_room := false
 var connecting := false
 var room_code := ""
@@ -159,13 +166,23 @@ func _emit_error(message: String) -> void:
 
 # --- Server URL ------------------------------------------------------------------------------
 
+## Where this build looks for rooms when nobody has said otherwise.
+func default_server_url() -> String:
+	return PUBLIC_SERVER_URL if OS.has_feature("web") else DEFAULT_SERVER_URL
+
+
+## The lobby's Apply button: an empty box, or the built-in address, means "use the default".
 func set_server_url(value: String) -> void:
 	var cleaned := value.strip_edges()
 	while cleaned.ends_with("/"):
 		cleaned = cleaned.left(-1)
-	server_url = cleaned if cleaned != "" else DEFAULT_SERVER_URL
+	server_url = cleaned if cleaned != "" else default_server_url()
 	var config := ConfigFile.new()
-	config.set_value("online", "server_url", server_url)
+	config.load(CONFIG_PATH)  # a missing file is fine: we are about to write it
+	if server_url == default_server_url():
+		config.erase_section_key("online", "server_url")  # no stale address to remember
+	else:
+		config.set_value("online", "server_url", server_url)
 	config.save(CONFIG_PATH)
 
 
@@ -178,7 +195,8 @@ func _load_server_url() -> void:
 	var from_file := ""
 	if config.load(CONFIG_PATH) == OK:
 		from_file = str(config.get_value("online", "server_url", ""))
-	set_server_url(from_command_line if from_command_line != "" else (from_file if from_file != "" else DEFAULT_SERVER_URL))
+	server_url = (from_command_line if from_command_line != ""
+			else (from_file if from_file != "" else default_server_url()))
 
 
 # --- Sending ---------------------------------------------------------------------------------
