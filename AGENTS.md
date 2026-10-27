@@ -49,7 +49,11 @@ Godot client                         Cloudflare Worker (online/)
   "Create a Room", room-code box, server URL field, status text.
 - **`game/scenes/online_world.tscn` / `game/scripts/online_world.gd`** — shared camp/forest.
   Reuses `Territory.WorldFloor`, camp props, Clan NPCs and terrain art, but only spawns the
-  local `TopDownPlayer` plus `RemotePlayer` nodes. One camera follows the local cat.
+  local `TopDownPlayer` plus `RemotePlayer` nodes. One camera follows the local cat. The HUD has
+  one **room info** box in the top-right that is **hidden until TAB is held**: room code, cat
+  count, and a row per cat (name tag colour, fur swatch, name, title) — see `_who_entries()`,
+  `_build_info_body()` and `_set_info_open()`; `_info_sig` keeps it from rebuilding on every
+  position update.
 - **`game/scripts/remote_player.gd`** — draws another player's cat from the joined cat data,
   smooths between network updates, and shows their name and speech bubbles.
 - **`online/src/index.js`** — Worker routes and the `Room` Durable Object. One DO per room code.
@@ -120,8 +124,11 @@ XDG_DATA_HOME=/tmp/cat-b godot --path game
 ```
 
 Controls in the shared world: **arrows** walk, **SPACE** pounce, **E** say a preset hello,
-**ESC** menu. (The local two-player mode also uses E for Player 2, hence the separate
-`online` / `online_emote` input actions.)
+**hold TAB** to open the room info box, **ESC** menu. **M** mutes all sound in any scene, and the
+menu screens also have a small "Sound: On/Off" button in the top-right corner
+(`game/scripts/sound_button.gd`); `Sfx` remembers the choice in `user://settings.cfg`. (The local
+two-player mode also uses E for Player 2, hence the separate `online` / `online_emote` /
+`online_players` input actions.)
 
 ### Testing and checking changes
 
@@ -176,6 +183,13 @@ HTTPS worker URL. Single-player still works without any server.
   camp; Clan cats wander independently on each screen.
 - No server authority, prediction, reconciliation, interpolation beyond simple smoothing, or
   anti-cheat. Positions are clamped to the 3200×2400 territory.
+- **Saves and profiles are per device.** Each client reads its own three local slots
+  (`user://save_N.json`); the room only ever learns a cat's name, title and looks, and only for
+  as long as that socket is open. Nothing about a save is stored in the DO.
+- A new player with no saved cat gets a **"Make your first cat!"** button in the lobby. It sets
+  `GameState.return_to_online`, sends them through the normal story cat maker (`slots.tscn` →
+  `creator.tscn` → `paint.tscn`), and `GameState.back_to_online_if_asked()` brings them back to
+  the lobby afterwards. Do not duplicate the cat maker inside online mode.
 - No chat input UI; `chat` messages are relayed but only emotes are exposed.
 - No room expiry, reconnection, spectator mode, passwords, or moderation. Four-letter room
   codes are public and guessable. Rooms hold at most 8 sockets.

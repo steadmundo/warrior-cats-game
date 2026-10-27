@@ -499,3 +499,39 @@ and make a proof of concept that works on this computer first.
 - Share the same patrols, prey and ceremonies online
 - A proper chat box, so you can type what you want to say
 - A Gathering at Fourtrees with the other Clans at the full moon
+
+## Session: 2026-10-27
+
+### What the creator asked for:
+Playing online in a web browser worked, but it was hard to tell who was in the room, there was
+no way to hush the sound, and a brand-new player with no saved cat got stuck in the online
+lobby with nothing to do.
+
+### What was built/changed:
+- **Room info!** Nothing is in the way while you play: the room box only appears **while you
+  hold TAB**. It shows the room code, how many cats are together, and a row for each cat — their
+  name, their Clan title, a swatch of their fur colour, and a coloured stripe that matches the
+  name tag over their head. Your own cat says "(you)". Let go of TAB and the whole box
+  disappears again, so the corner of the screen stays clear.
+- **Sound off, before you even start!** Press **M** at any time to mute all the sound, and press
+  it again to bring it back. Every menu screen (title, save slots, Play Together, Online Play)
+  has a small **"Sound: On / Off"** button in the top-right corner, so the game can be hushed
+  without starting a game. The pause menu keeps its own Sound button, but it sits below the two
+  choices so it can't be picked by accident. The game remembers your choice next time.
+- **Nobody gets stuck anymore**: if you have no saved cat yet, the online lobby now shows a big
+  green **"Make your first cat!"** button instead of grey dead buttons. It takes you to the
+  normal cat maker, and when your cat is done it brings you straight back to Online Play with
+  your new cat already picked.
+- The online check now also makes sure the room info box lists both cats and opens up on TAB.
+
+### What you can do now:
+- Hold **TAB** in the online camp to open the room info box and see everybody who is playing
+- Press **M** to turn the sound off and on, any time, or use the Sound button in the corner of
+  any menu
+- Start Online Play on a brand-new computer or browser and make your cat right from there
+
+### What's next:
+- Share the same patrols, prey and ceremonies online
+- A proper chat box, so you can type what you want to say
+- Let a cat carry its name and colours to another computer (a "cat code")
+- A Gathering at Fourtrees with the other Clans at the full moon
