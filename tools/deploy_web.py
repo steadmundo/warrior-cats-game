@@ -7,10 +7,8 @@ Usage:
     python3 tools/deploy_web.py --build    # build only, no deploy
     python3 tools/deploy_web.py --local    # build, then serve on http://localhost:8790
 
-wrangler.jsonc (repo root) deliberately has no build command: Cloudflare Workers
-Builds does not honour "custom builds" from the Wrangler config, so the build
-step used on `git push` is set in the Cloudflare dashboard instead
-(Settings > Build, command `bash tools/cf_build.sh`). Doing the build here keeps
+A `git push` to master runs `.github/workflows/deploy-website.yml`, which calls
+this script with --build and then `wrangler deploy`. Doing the build here keeps
 one build per deploy, whether it was triggered by a push or by hand.
 
 The Worker lives in web/ (src/index.js), configured by wrangler.jsonc at the

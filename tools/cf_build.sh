@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# Build step for Cloudflare Workers Builds (see wrangler.jsonc in the repo root).
+# Build the browser version for Cloudflare (GitHub Actions deploy-website.yml,
+# or a Workers Builds dashboard command).
 #
-# Cloudflare's build image has Python and curl but no Godot, so this fetches the
+# The build machine has Python and curl but no Godot, so this fetches the
 # editor first. tools/export_game.py downloads whatever export templates it is
 # missing by itself, fetching only the files the web build needs.
 #
-# Runs on Linux; that is what Workers Builds uses.
+# Runs on Linux.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

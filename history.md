@@ -608,3 +608,30 @@ harder for kids to play.
 - A proper chat box, so you can type what you want to say
 - Shared patrols, prey and ceremonies online
 - A cat code, so a cat can visit another computer
+
+## Session: 2026-11-01 (pipeline)
+
+### What the creator asked for:
+Finish the pipeline so a git push updates GitHub, and that then updates both Cloudflare
+Workers: the game website and the online room server.
+
+### What was built/changed:
+- **Pushing to GitHub now deploys both Workers.** Two new GitHub Actions:
+  - **Deploy website** builds the browser game (downloads Godot, exports it, splits the
+    big engine file) and publishes `warrior-cats-game`.
+  - **Deploy room server** publishes `warrior-cats-online`.
+  Each one only runs when the matching files change, so a room-server tweak does not
+  rebuild the whole game.
+- The Cloudflare account id is written into both Worker config files so deploys always
+  go to the right account.
+- One grown-up step is still needed: a GitHub secret called `CLOUDFLARE_API_TOKEN`.
+  Without it the new Actions stop on purpose instead of uploading nothing.
+
+### What you can do now:
+- After the secret is in place, `git push` to `master` updates the live website and/or
+  the room server
+- Run either workflow by hand from the GitHub Actions tab
+
+### What's next:
+- A proper chat box, so you can type what you want to say
+- Shared patrols, prey and ceremonies online

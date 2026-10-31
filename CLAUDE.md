@@ -93,8 +93,9 @@ See `AGENTS.md` for the architecture, WebSocket protocol, deployment and current
 
 `python3 tools/export_game.py` builds self-contained packages for the web, Windows, macOS and
 Linux into `dist/` (`--serve` plays the web build at http://localhost:8000). The GitHub
-workflows in `.github/workflows/` use it: `pages.yml` publishes the web version on every push,
-`release.yml` attaches all packages to a release when a `v*` tag is pushed. See `README.md`.
+workflows in `.github/workflows/` use it: `deploy-website.yml` builds and deploys the browser
+Worker on push, `deploy-online.yml` deploys the room server, and `release.yml` attaches
+desktop packages to a release when a `v*` tag is pushed. See `README.md`.
 
 ## Files
 

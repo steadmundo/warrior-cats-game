@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "warrior-cats-online",
+  "account_id": "8d7808cecdf479b7b2a814df0af9b1b2",
   "main": "src/index.js",
   "compatibility_date": "2026-01-01",
   "durable_objects": {

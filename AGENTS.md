@@ -231,15 +231,21 @@ Cloudflare reads that file for the Worker name and assets directory, and it has 
 level for the dashboard to find it. Build output goes to `web/public`, which is **not committed**
 (see `.gitignore`).
 
-**Where the build command lives:** in the Cloudflare dashboard, not in `wrangler.jsonc`.
-Workers Builds does not honour "custom builds" from the Wrangler config, so a `build.command`
-there would be ignored — and might build twice. The dashboard setting is
-`bash tools/cf_build.sh` (download Godot, then `tools/deploy_web.py --build`), deploy command
-`npx wrangler deploy`, root directory left at the repo root. `tools/deploy_web.py` runs the same
-build itself, so a manual deploy and a push-built deploy do the same work once.
+**How a git push deploys both Workers.** Native Cloudflare Workers Builds needs a GitHub App
+login in the dashboard (Wrangler OAuth cannot attach it). This repo therefore uses GitHub
+Actions instead:
 
-`build.command`, when one is used, runs from the repo root, never from `web/`. Keep its paths
-repo-relative — a path that assumes `web/` as the working directory breaks the build.
+- `.github/workflows/deploy-website.yml` — on `master` changes under `game/`, `web/`, or the
+  build tools: `bash tools/cf_build.sh` then `wrangler deploy` for `warrior-cats-game`.
+- `.github/workflows/deploy-online.yml` — on `master` changes under `online/`: `wrangler deploy`
+  in `online/` for `warrior-cats-online`.
+- Both need the GitHub Actions secret `CLOUDFLARE_API_TOKEN` (Cloudflare template **Edit
+  Cloudflare Workers**). `CLOUDFLARE_ACCOUNT_ID` is hard-coded in the workflows and both
+  `wrangler.jsonc` files.
+
+`tools/deploy_web.py` runs the same build itself, so a manual deploy and a push-built deploy
+do the same work once. Keep build-script paths repo-relative — they run from the repo root,
+never from `web/`.
 
 **Why the engine file is split — read this before "simplifying" it.** Godot's `index.wasm` is
 about 36 MiB and Cloudflare refuses to store or serve any single static asset over 25 MiB.
@@ -267,9 +273,9 @@ python3 tools/deploy_web.py           # build + deploy
 python3 tools/deploy_web.py --local   # build, then http://localhost:8790
 ```
 
-`.github/workflows/pages.yml` was deleted — neither GitHub Pages nor that workflow is used any
-more. `.github/workflows/release.yml` stays: desktop packages need macOS, which Cloudflare
-cannot build.
+`.github/workflows/pages.yml` was deleted — GitHub Pages is not used. Website and room-server
+deploys are `deploy-website.yml` and `deploy-online.yml`. `.github/workflows/release.yml`
+stays: desktop packages need macOS, which Cloudflare cannot build.
 
 ## File map for online work
 
@@ -304,7 +310,12 @@ web/                              # the game website (Cloudflare Worker with sta
 tools/
 ├── check_online.py               # starts worker + runs the Godot smoke test
 ├── deploy_web.py                 # build the browser version and deploy/preview it
-└── cf_build.sh                   # build step Cloudflare Workers Builds runs
+└── cf_build.sh                   # download Godot and export the browser build (CI)
+
+.github/workflows/
+├── deploy-website.yml            # push → warrior-cats-game
+├── deploy-online.yml             # push → warrior-cats-online
+└── release.yml                   # v* tag → desktop zips
 ```
 
 ## Style and safety reminders

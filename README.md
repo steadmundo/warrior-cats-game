@@ -105,25 +105,38 @@ downloads the Godot export templates it needs (only those files, not the whole 1
 The web build has to be served over http; opening `index.html` from disk won't work. It's
 exported without threads, so no special server headers are needed.
 
-## Publishing the website
+## Publishing the website and the room server
 
-The website is a Cloudflare Worker with static assets (`web/`). Cloudflare builds it itself:
-Workers Builds pulls this repo on every push, runs the build command from the Worker's dashboard
-settings (`bash tools/cf_build.sh`, which downloads Godot and exports the browser build) and then
-deploys with `npx wrangler deploy`. The build command is set in the dashboard rather than in
-`wrangler.jsonc` because Workers Builds ignores build commands from the Wrangler config.
+A push to `master` on GitHub deploys both Cloudflare Workers:
+
+| Workflow | Worker | When it runs |
+|---|---|---|
+| `.github/workflows/deploy-website.yml` | `warrior-cats-game` (the browser game) | changes under `game/`, `web/`, or the build tools |
+| `.github/workflows/deploy-online.yml` | `warrior-cats-online` (the room server) | changes under `online/` |
+| `.github/workflows/release.yml` | desktop zips on a GitHub Release | a tag like `v1.0` |
+
+The website workflow runs `bash tools/cf_build.sh` (download Godot, export the browser build,
+split the engine file) and then `wrangler deploy`. The room-server workflow only needs
+`wrangler deploy` in `online/`. You can also run either workflow by hand from the Actions tab.
+
+**One GitHub secret is required:** `CLOUDFLARE_API_TOKEN`. Create it in the Cloudflare dashboard
+with the **Edit Cloudflare Workers** template, then add it at
+<https://github.com/steadmundo/warrior-cats-game/settings/secrets/actions>. Without it the
+workflows fail on purpose rather than uploading nothing. The account id is already in the
+workflow files and both `wrangler.jsonc` files.
 
 Godot's `index.wasm` is about 36 MiB and Cloudflare refuses to store any single asset over
 25 MiB, so the build cuts the engine into parts and `web/src/index.js` streams them back to the
 browser as one ordinary download. That file also records the two approaches that do *not* work,
 so nobody has to rediscover them.
 
-To publish by hand from this computer:
+To publish by hand from this computer (after `wrangler login`):
 
 ```bash
-python3 tools/deploy_web.py           # build and deploy
+python3 tools/deploy_web.py           # build and deploy the website
 python3 tools/deploy_web.py --local   # build, then play it at http://localhost:8790
 python3 tools/deploy_web.py --build    # build only
+cd online && wrangler deploy          # room server
 ```
 
 `.github/workflows/release.yml` builds every desktop package when a tag like `v1.0` is pushed
