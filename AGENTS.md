@@ -70,7 +70,7 @@ Client → server:
 |---|---|---|
 | `hello` | `name`, `catData`, optional `pos` | join as a visible cat |
 | `input` | `pos {x,y}`, `facing`, `walking`, `pouncing` | movement state |
-| `action` | `action {type, data}` | emotes (currently `emote` + `{text}`) |
+| `action` | `action {type, data}` | emotes (currently `emote` + `{text}`, text cut to 40 chars) |
 | `chat` | `text` | relayed text (no chat UI yet) |
 | `ping` | — | auto-answered `pong` by the DO (not JSON; ignored by the client) |
 
@@ -202,10 +202,64 @@ deployed worker. Single-player still works without any server.
   `creator.tscn` → `paint.tscn`), and `GameState.back_to_online_if_asked()` brings them back to
   the lobby afterwards. Do not duplicate the cat maker inside online mode.
 - No chat input UI; `chat` messages are relayed but only emotes are exposed.
-- No room expiry, reconnection, spectator mode, passwords, or moderation. Four-letter room
-  codes are public and guessable. Rooms hold at most 8 sockets.
+- No reconnection, spectator mode, passwords, or moderation. Four-letter room codes are public
+  and guessable, and knowing a code is all a player needs. Rooms hold at most 8 sockets.
+- **A room is forgotten two hours after its last player leaves** (`ROOM_TTL_MS` in
+  `online/src/index.js`, handled by the DO's `alarm()`), so codes do not pile up. Until then the
+  code works for anyone who knows it.
+- **Creating and joining rooms is rate limited per visitor IP** with Cloudflare's
+  `ratelimits` bindings (10 creates and 40 joins a minute). `wrangler dev` has no
+  `CF-Connecting-IP`, so local tests are never limited.
 - Reusing an existing code merges into that room (collision chance is tiny for this scale).
 - Emotes are a fixed list (`EMOTES` in `online_world.gd`); names/cats are cleaned/truncated.
+  The room only forwards `data.text` (≤40 chars) for an `action`, and drops any other fields a
+  client invents.
+- Optional `CREATE_ROOM_KEY` secret: when set, `/api/room/create` needs an `X-Create-Key`
+  header. The lobby's **Parent** box saves one. It is a speed bump, not real auth — a key typed
+  into the web build lives in that browser only, but anyone reading the screen can see it.
+
+## The website — Cloudflare Worker (2026-11-01)
+
+The browser version is hosted on Cloudflare, not GitHub Pages:
+
+```
+https://warrior-cats-game.maast85.workers.dev      # worker: warrior-cats-game
+```
+
+`web/` is a Worker with static assets. `web/wrangler.jsonc` points at `web/public`, which is
+build output and **not committed** (see `.gitignore`). Cloudflare Workers Builds builds the
+site: on every push it runs `tools/cf_build.sh` (downloads Godot, then
+`tools/deploy_web.py --build`) and deploys with `wrangler deploy`.
+
+**Why the engine file is split — read this before "simplifying" it.** Godot's `index.wasm` is
+about 36 MiB and Cloudflare refuses to store or serve any single static asset over 25 MiB.
+`tools/deploy_web.py` cuts it into 20 MiB parts (`index.wasm.0`, `index.wasm.1`, ...) plus
+`index.wasm.json`, and `web/src/index.js` streams the parts back as one `/index.wasm` download.
+Two tidier-looking alternatives were tried and both fail:
+
+- `_headers` with `Content-Encoding: gzip` — Cloudflare strips `Content-Encoding`.
+- Setting the same header from a Worker — Cloudflare re-compresses the body, so the browser
+  gets gzip-of-gzip and the engine never starts.
+
+Leaving the bytes uncompressed and letting Cloudflare compress the streamed response is the
+only version that works. Verify any change by fetching `/index.wasm` and comparing the decoded
+bytes with `game/export/web/index.wasm`:
+
+```bash
+curl -s -H 'Accept-Encoding: gzip' -o /tmp/a.wasm https://warrior-cats-game.maast85.workers.dev/index.wasm
+gzip -dc /tmp/a.wasm | cmp - game/export/web/index.wasm && echo same
+```
+
+Publishing by hand (no CI) works too:
+
+```bash
+python3 tools/deploy_web.py           # build + deploy
+python3 tools/deploy_web.py --local   # build, then http://localhost:8790
+```
+
+`.github/workflows/pages.yml` was deleted — neither GitHub Pages nor that workflow is used any
+more. `.github/workflows/release.yml` stays: desktop packages need macOS, which Cloudflare
+cannot build.
 
 ## File map for online work
 
@@ -232,8 +286,15 @@ online/
 ├── test_room.mjs                 # worker-only WebSocket test
 └── .gitignore                    # node_modules/, .wrangler/
 
+web/                              # the game website (Cloudflare Worker with static assets)
+├── wrangler.jsonc                # worker name, assets binding, build command
+├── src/index.js                  # streams the split engine file as /index.wasm
+└── public/                       # build output, gitignored (tools/deploy_web.py)
+
 tools/
-└── check_online.py               # starts worker + runs the Godot smoke test
+├── check_online.py               # starts worker + runs the Godot smoke test
+├── deploy_web.py                 # build the browser version and deploy/preview it
+└── cf_build.sh                   # build step Cloudflare Workers Builds runs
 ```
 
 ## Style and safety reminders
