@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build step for Cloudflare Workers Builds (see web/wrangler.jsonc).
+# Build step for Cloudflare Workers Builds (see wrangler.jsonc in the repo root).
 #
 # Cloudflare's build image has Python and curl but no Godot, so this fetches the
 # editor first. tools/export_game.py downloads whatever export templates it is

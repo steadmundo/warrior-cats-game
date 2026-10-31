@@ -226,10 +226,20 @@ The browser version is hosted on Cloudflare, not GitHub Pages:
 https://warrior-cats-game.maast85.workers.dev      # worker: warrior-cats-game
 ```
 
-`web/` is a Worker with static assets. `web/wrangler.jsonc` points at `web/public`, which is
-build output and **not committed** (see `.gitignore`). Cloudflare Workers Builds builds the
-site: on every push it runs `tools/cf_build.sh` (downloads Godot, then
-`tools/deploy_web.py --build`) and deploys with `wrangler deploy`.
+`web/` is a Worker with static assets, configured by `wrangler.jsonc` in the **repo root** —
+Cloudflare reads that file for the Worker name and assets directory, and it has to sit at the top
+level for the dashboard to find it. Build output goes to `web/public`, which is **not committed**
+(see `.gitignore`).
+
+**Where the build command lives:** in the Cloudflare dashboard, not in `wrangler.jsonc`.
+Workers Builds does not honour "custom builds" from the Wrangler config, so a `build.command`
+there would be ignored — and might build twice. The dashboard setting is
+`bash tools/cf_build.sh` (download Godot, then `tools/deploy_web.py --build`), deploy command
+`npx wrangler deploy`, root directory left at the repo root. `tools/deploy_web.py` runs the same
+build itself, so a manual deploy and a push-built deploy do the same work once.
+
+`build.command`, when one is used, runs from the repo root, never from `web/`. Keep its paths
+repo-relative — a path that assumes `web/` as the working directory breaks the build.
 
 **Why the engine file is split — read this before "simplifying" it.** Godot's `index.wasm` is
 about 36 MiB and Cloudflare refuses to store or serve any single static asset over 25 MiB.
@@ -286,8 +296,8 @@ online/
 ├── test_room.mjs                 # worker-only WebSocket test
 └── .gitignore                    # node_modules/, .wrangler/
 
+wrangler.jsonc                     # the game website: worker name and assets directory
 web/                              # the game website (Cloudflare Worker with static assets)
-├── wrangler.jsonc                # worker name, assets binding, build command
 ├── src/index.js                  # streams the split engine file as /index.wasm
 └── public/                       # build output, gitignored (tools/deploy_web.py)
 

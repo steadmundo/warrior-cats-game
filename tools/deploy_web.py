@@ -7,10 +7,17 @@ Usage:
     python3 tools/deploy_web.py --build    # build only, no deploy
     python3 tools/deploy_web.py --local    # build, then serve on http://localhost:8790
 
-The Worker lives in web/ (wrangler.jsonc + src/index.js). Cloudflare refuses to
-store any single static asset bigger than 25 MiB, and Godot's index.wasm is
-about 36 MiB, so the build cuts it into parts and web/src/index.js streams them
-back to the browser as one ordinary /index.wasm download.
+wrangler.jsonc (repo root) deliberately has no build command: Cloudflare Workers
+Builds does not honour "custom builds" from the Wrangler config, so the build
+step used on `git push` is set in the Cloudflare dashboard instead
+(Settings > Build, command `bash tools/cf_build.sh`). Doing the build here keeps
+one build per deploy, whether it was triggered by a push or by hand.
+
+The Worker lives in web/ (src/index.js), configured by wrangler.jsonc at the
+repo root so the dashboard finds it. Cloudflare refuses to store any single
+static asset bigger than 25 MiB, and Godot's index.wasm is about 36 MiB, so the
+build cuts it into parts and web/src/index.js streams them back to the browser
+as one ordinary /index.wasm download.
 
 Exit code 0 = deployed (or built), 1 = something failed.
 """
@@ -80,13 +87,13 @@ def build() -> bool:
 
 def deploy() -> bool:
     print("Deploying to Cloudflare...")
-    result = subprocess.run(["wrangler", "deploy"], cwd=WEB_PROJECT)
+    result = subprocess.run(["wrangler", "deploy"], cwd=ROOT)
     return result.returncode == 0
 
 
 def serve_local() -> bool:
     print("Serving at http://localhost:8790 (CTRL+C to stop)...")
-    result = subprocess.run(["wrangler", "dev", "--port", "8790"], cwd=WEB_PROJECT)
+    result = subprocess.run(["wrangler", "dev", "--port", "8790"], cwd=ROOT)
     return result.returncode == 0
 
 

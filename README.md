@@ -108,8 +108,10 @@ exported without threads, so no special server headers are needed.
 ## Publishing the website
 
 The website is a Cloudflare Worker with static assets (`web/`). Cloudflare builds it itself:
-Workers Builds pulls this repo on every push, runs `tools/cf_build.sh` (which downloads Godot,
-exports the browser build) and then runs `wrangler deploy`.
+Workers Builds pulls this repo on every push, runs the build command from the Worker's dashboard
+settings (`bash tools/cf_build.sh`, which downloads Godot and exports the browser build) and then
+deploys with `npx wrangler deploy`. The build command is set in the dashboard rather than in
+`wrangler.jsonc` because Workers Builds ignores build commands from the Wrangler config.
 
 Godot's `index.wasm` is about 36 MiB and Cloudflare refuses to store any single asset over
 25 MiB, so the build cuts the engine into parts and `web/src/index.js` streams them back to the
