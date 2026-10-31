@@ -36,15 +36,42 @@ func _ready() -> void:
 	ui.add_child(Fx.centered_label("Into the Wild", 44, Color("fff6ec"), 164))
 	
 	var panel := Panel.new()
-	panel.position = Vector2(320, 220)
-	panel.size = Vector2(640, 230)
-	panel.add_theme_stylebox_override("panel", Fx.cute_panel(30))
+	panel.position = Vector2(260, 250)
+	panel.size = Vector2(760, 350)
+	var style := Fx.cute_panel(30)
+	style.bg_color = Color(1.0, 0.96, 0.93, 0.72)
+	style.shadow_color = Color(0.3, 0.1, 0.2, 0.16)
+	panel.add_theme_stylebox_override("panel", style)
 	ui.add_child(panel)
 	
-	panel.add_child(Fx.centered_label("Choose how to play!", 38, Color("ffd966"), 16, 640))
-	panel.add_child(Fx.centered_label("SPACE = Play Solo", 38, Color("9be37a"), 78, 640))
-	panel.add_child(Fx.centered_label("E = Play Together on this computer", 36, Color("ffb3c8"), 138, 640))
-	panel.add_child(Fx.centered_label("O = Play Together Online", 36, Color("9be3ff"), 194, 640))
+	panel.add_child(Fx.centered_label("Choose how to play!", 44, Color("ffd966"), 28, 760))
+	
+	var paw1 := Label.new()
+	paw1.text = "🐾"
+	paw1.position = Vector2(90, 118)
+	paw1.add_theme_font_size_override("font_size", 48)
+	panel.add_child(paw1)
+	var solo := Fx.centered_label("SPACE = Play Solo", 46, Color("9be37a"), 118, 580)
+	solo.position.x = 170
+	panel.add_child(solo)
+	
+	var paw2 := Label.new()
+	paw2.text = "🐾"
+	paw2.position = Vector2(90, 198)
+	paw2.add_theme_font_size_override("font_size", 48)
+	panel.add_child(paw2)
+	var local := Fx.centered_label("E = Play Together on this computer", 44, Color("ffb3c8"), 198, 580)
+	local.position.x = 170
+	panel.add_child(local)
+	
+	var paw3 := Label.new()
+	paw3.text = "🐾"
+	paw3.position = Vector2(90, 278)
+	paw3.add_theme_font_size_override("font_size", 48)
+	panel.add_child(paw3)
+	var online := Fx.centered_label("O = Play Together Online", 44, Color("9be3ff"), 278, 580)
+	online.position.x = 170
+	panel.add_child(online)
 	
 	var sound := SoundButton.new()
 	sound.position = SoundButton.CORNER
