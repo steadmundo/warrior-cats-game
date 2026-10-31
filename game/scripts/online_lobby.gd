@@ -7,6 +7,7 @@ extends Node2D
 ## bottom of the screen can point somewhere else. See Net.default_server_url().
 
 const SERVER_HINT := "Server (press Apply after changing)"
+const PARENT_HINT := "Parent key (only needed if room creation is locked)"
 
 var _status: Label
 var _slot_buttons: Array[Button] = []
@@ -17,6 +18,10 @@ var _step2_label: Label
 var _join_hint: Label
 var _room_input: LineEdit
 var _server_input: LineEdit
+var _parent_input: LineEdit
+var _parent_toggle: Button
+var _parent_panel: Panel
+var _parent_open := false
 var _selected_slot := -1
 var _busy := false
 var _launching := false
@@ -113,6 +118,40 @@ func _ready() -> void:
 	apply.add_theme_font_size_override("font_size", 20)
 	apply.pressed.connect(_apply_server)
 	panel.add_child(apply)
+
+	_parent_toggle = _make_button("Parent", Color("e7c6ff"), Vector2(610, 432), Vector2(130, 46))
+	_parent_toggle.add_theme_font_size_override("font_size", 20)
+	_parent_toggle.pressed.connect(_toggle_parent)
+	panel.add_child(_parent_toggle)
+
+	_parent_panel = Panel.new()
+	_parent_panel.position = Vector2(610, 340)
+	_parent_panel.size = Vector2(420, 80)
+	_parent_panel.visible = false
+	_parent_panel.add_theme_stylebox_override("panel", Fx.cute_panel(20))
+	panel.add_child(_parent_panel)
+
+	var parent_hint := Fx.ink_label(PARENT_HINT, 16, Fx.INK)
+	parent_hint.position = Vector2(12, 10)
+	parent_hint.size = Vector2(396, 22)
+	_parent_panel.add_child(parent_hint)
+
+	_parent_input = LineEdit.new()
+	_parent_input.position = Vector2(12, 34)
+	_parent_input.size = Vector2(296, 38)
+	_parent_input.placeholder_text = "Key"
+	_parent_input.secret = true
+	_parent_input.add_theme_font_size_override("font_size", 16)
+	_parent_input.add_theme_color_override("font_color", Fx.INK)
+	_parent_input.add_theme_color_override("caret_color", Fx.INK)
+	if Net.has_method("get") and "create_key" in Net:
+		_parent_input.text = Net.create_key
+	_parent_panel.add_child(_parent_input)
+
+	var parent_apply := _make_button("Save", Color("7ad67a"), Vector2(318, 34), Vector2(90, 38))
+	parent_apply.add_theme_font_size_override("font_size", 18)
+	parent_apply.pressed.connect(_apply_parent_key)
+	_parent_panel.add_child(parent_apply)
 
 	ui.add_child(Fx.centered_label("ESC = back to the title screen", 22, Color("fff6ec"), 656))
 
@@ -290,6 +329,18 @@ func _apply_server() -> void:
 	Net.set_server_url(_server_input.text)
 	_server_input.text = Net.server_url
 	_set_status("Server set to %s" % Net.server_url)
+
+
+func _toggle_parent() -> void:
+	_parent_open = not _parent_open
+	if _parent_panel != null:
+		_parent_panel.visible = _parent_open
+
+
+func _apply_parent_key() -> void:
+	if Net.has_method("set_create_key"):
+		Net.set_create_key(_parent_input.text)
+	_set_status("Parent key saved." if _parent_input.text.strip_edges() != "" else "Parent key cleared.")
 
 
 func _set_status(text: String) -> void:

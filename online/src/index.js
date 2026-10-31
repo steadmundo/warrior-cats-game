@@ -28,7 +28,7 @@ const MAP_H = 2400;
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Headers": "Content-Type, X-Create-Key",
   "Access-Control-Max-Age": "86400",
 };
 
@@ -155,12 +155,26 @@ export default {
 
     try {
       if (url.pathname === "/api/room/create" && request.method === "POST") {
-        const body = await request.json().catch(() => ({}));
-        const roomCode = cleanCode(body?.roomCode) || newRoomCode();
-        const stub = env.ROOMS.get(env.ROOMS.idFromName(roomCode));
-        const created = await stub.fetch("https://room.internal/create", { method: "POST" });
-        if (!created.ok) return jsonResponse({ error: "Could not create the room." }, 500);
-        return jsonResponse({ roomCode, wsUrl: websocketUrl(request, roomCode) });
+        const requiredKey = env.CREATE_ROOM_KEY;
+        if (requiredKey) {
+          const body = await request.json().catch(() => ({}));
+          const providedKey = request.headers.get("X-Create-Key") || body?.key || "";
+          if (providedKey !== requiredKey) {
+            return jsonResponse({ error: "Room creation is locked. Ask a grown-up for the key." }, 403);
+          }
+          const roomCode = cleanCode(body?.roomCode) || newRoomCode();
+          const stub = env.ROOMS.get(env.ROOMS.idFromName(roomCode));
+          const created = await stub.fetch("https://room.internal/create", { method: "POST" });
+          if (!created.ok) return jsonResponse({ error: "Could not create the room." }, 500);
+          return jsonResponse({ roomCode, wsUrl: websocketUrl(request, roomCode) });
+        } else {
+          const body = await request.json().catch(() => ({}));
+          const roomCode = cleanCode(body?.roomCode) || newRoomCode();
+          const stub = env.ROOMS.get(env.ROOMS.idFromName(roomCode));
+          const created = await stub.fetch("https://room.internal/create", { method: "POST" });
+          if (!created.ok) return jsonResponse({ error: "Could not create the room." }, 500);
+          return jsonResponse({ roomCode, wsUrl: websocketUrl(request, roomCode) });
+        }
       }
 
       if (url.pathname === "/api/room/join" && request.method === "POST") {
