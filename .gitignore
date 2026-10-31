@@ -24,3 +24,6 @@ Thumbs.db
 
 # Packaged builds made by tools/export_game.py
 dist/
+
+# Built by tools/deploy_web.py for Cloudflare (web/src/index.js explains the split)
+web/public/

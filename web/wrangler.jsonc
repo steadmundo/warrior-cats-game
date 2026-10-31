@@ -1,0 +1,16 @@
+{
+  "name": "warrior-cats-game",
+  "main": "src/index.js",
+  "compatibility_date": "2026-01-01",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/index.wasm"]
+  },
+  "build": {
+    "command": "bash ../tools/cf_build.sh"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

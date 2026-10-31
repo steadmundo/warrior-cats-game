@@ -14,7 +14,7 @@ menu. Player 2 uses WASD and E. Press **O** on the title screen for Online Play.
 
 ## Play it
 
-- **In your browser:** <https://jerrypnz.github.io/warrior-cats-game/> (works best on a
+- **In your browser:** <https://warrior-cats-game.maast85.workers.dev/> (works best on a
   computer with a keyboard). Saves are kept in your browser.
 - **Download:** Windows, macOS and Linux versions are on the
   [Releases](../../releases/latest) page. Unzip and run, nothing else to install.
@@ -97,7 +97,7 @@ downloads the Godot export templates it needs (only those files, not the whole 1
 
 | Package | What's inside |
 |---|---|
-| `warrior-cats-web.zip` | HTML5 version for any static web host (itch.io, GitHub Pages) |
+| `warrior-cats-web.zip` | HTML5 version for any static web host (itch.io, Cloudflare, GitHub Pages) |
 | `warrior-cats-windows.zip` | A single 64-bit `.exe` |
 | `warrior-cats-macos.zip` | `Warrior Cats.app` for Intel and Apple Silicon Macs (ad-hoc signed) |
 | `warrior-cats-linux.zip` | A single x86_64 program |
@@ -105,12 +105,26 @@ downloads the Godot export templates it needs (only those files, not the whole 1
 The web build has to be served over http; opening `index.html` from disk won't work. It's
 exported without threads, so no special server headers are needed.
 
-GitHub Actions use the same tool:
+## Publishing the website
 
-- `.github/workflows/pages.yml` checks the game runs, then publishes the web version to GitHub
-  Pages on every push. One-time setup: Settings → Pages → Source = **GitHub Actions**.
-- `.github/workflows/release.yml` builds every package when a tag like `v1.0` is pushed and
-  attaches them to a GitHub Release. The file names never change, so
-  `releases/latest/download/warrior-cats-windows.zip` always gets the newest version.
+The website is a Cloudflare Worker with static assets (`web/`). Cloudflare builds it itself:
+Workers Builds pulls this repo on every push, runs `tools/cf_build.sh` (which downloads Godot,
+exports the browser build) and then runs `wrangler deploy`.
 
-Both pin `GODOT_VERSION`; bump it when you update Godot.
+Godot's `index.wasm` is about 36 MiB and Cloudflare refuses to store any single asset over
+25 MiB, so the build cuts the engine into parts and `web/src/index.js` streams them back to the
+browser as one ordinary download. That file also records the two approaches that do *not* work,
+so nobody has to rediscover them.
+
+To publish by hand from this computer:
+
+```bash
+python3 tools/deploy_web.py           # build and deploy
+python3 tools/deploy_web.py --local   # build, then play it at http://localhost:8790
+python3 tools/deploy_web.py --build    # build only
+```
+
+`.github/workflows/release.yml` builds every desktop package when a tag like `v1.0` is pushed
+and attaches them to a GitHub Release. The file names never change, so
+`releases/latest/download/warrior-cats-windows.zip` always gets the newest version. It pins
+`GODOT_VERSION`; bump it when you update Godot. The website no longer uses GitHub Pages.

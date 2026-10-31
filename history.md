@@ -549,3 +549,32 @@ with a real room server — and the room box needed to stay out of the way while
   address to play online
 - The room info box is now completely hidden until you **hold TAB**, so nothing covers the camp
   while you play
+
+## Session: 2026-11-01
+
+### What the creator asked for:
+Move the project to a GitHub account of our own, since the first copy belonged to a friend, and
+host the website on Cloudflare instead of GitHub Pages.
+
+### What was built/changed:
+- **The game has its own home on GitHub now**: a fresh public copy at
+  <https://github.com/steadmundo/warrior-cats-game>, keeping all the old history. The friend's
+  copy is still listed as `upstream`, so his later changes can be pulled in any time without
+  touching his repo.
+- **The website moved to Cloudflare**: <https://warrior-cats-game.maast85.workers.dev> serves
+  the browser version, and Cloudflare builds it by itself after every push.
+- **A genuinely fiddly bug got fixed**: Godot's engine file is 36 MB, and Cloudflare refuses to
+  serve any single file bigger than 25 MB. The build now cuts the engine into two pieces and the
+  Worker glues them back together on the way out, so the browser downloads one normal file. Two
+  cleverer-looking tricks (telling the browser the file was zipped) both turned out to corrupt
+  the download, so they are written down as "don't do this" notes.
+- The old GitHub Pages workflow was removed; the desktop-release workflow stays, because Mac
+  apps can only be built on a Mac.
+
+### What you can do now:
+- Play the newest version at the Cloudflare address, on any computer with a keyboard
+- Run `python3 tools/deploy_web.py` to publish a new version by hand, or just push to GitHub
+
+### What's next:
+- A proper chat box, so you can type what you want to say
+- Shared patrols, prey and ceremonies online
