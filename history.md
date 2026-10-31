@@ -578,3 +578,33 @@ host the website on Cloudflare instead of GitHub Pages.
 ### What's next:
 - A proper chat box, so you can type what you want to say
 - Shared patrols, prey and ceremonies online
+
+## Session: 2026-11-01
+
+### What the creator asked for:
+Make the online room server safe to leave running on the real internet, without making it
+harder for kids to play.
+
+### What was built/changed:
+- **Old room codes get forgotten.** A room now disappears two hours after its last player
+  leaves, so a code somebody shared a long time ago stops working. Rooms that people are
+  still playing in are never closed.
+- **No room floods.** Creating rooms and joining rooms is now limited per visitor (10 new
+  rooms and 40 join tries a minute), so a script cannot use up the family's free Cloudflare
+  allowance and take online play offline for everybody.
+- **No giant speech bubbles.** The room server now passes on only a short line of text for an
+  emote (40 letters) and throws away anything else a client makes up, so a modified game
+  cannot cover another cat's screen with a wall of text.
+- **No shouting.** Each cat can emote or chat at most about four times a second. The normal
+  game already sends slower than that, so nobody notices.
+- **Saying hello twice is quiet now.** Joining again only updates your own cat; it no longer
+  makes everybody else's screen show you arriving over and over.
+
+### What you can do now:
+- Play online at the Cloudflare address with a friend, as before — nothing changed in the game
+- Share a room code and know it will not work forever if a stranger finds it later
+
+### What's next:
+- A proper chat box, so you can type what you want to say
+- Shared patrols, prey and ceremonies online
+- A cat code, so a cat can visit another computer

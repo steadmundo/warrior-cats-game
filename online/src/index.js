@@ -10,6 +10,11 @@
  *   GET  /health           -> { ok: true }
  *   GET  /ws?room=CODE     -> WebSocket upgrade
  *
+ * The room server is public on purpose: the game has no logins. To keep that safe and
+ * cheap, (1) creating and joining rooms is rate limited per visitor IP, (2) a room is
+ * forgotten two hours after its last player leaves, and (3) everything a client sends is
+ * cleaned and rate limited before it is passed on to the other cats.
+ *
  * WebSocket messages (JSON)
  *   client -> server: hello, input, action, chat, ping
  *   server -> client: welcome, player_joined, player_update, player_left, event, chat
@@ -22,8 +27,15 @@ const ROOM_LENGTH = 4;
 const MAX_PLAYERS = 8;
 const MAX_NAME = 24;
 const MAX_CHAT = 120;
+const MAX_ACTION_TEXT = 40;
 const MAP_W = 3200;
 const MAP_H = 2400;
+
+/** A room with nobody in it is forgotten after this long, so codes never pile up. */
+const ROOM_TTL_MS = 2 * 60 * 60 * 1000;
+/** A cat may move about 25 times a second and speak about 4 times a second. */
+const MIN_INPUT_MS = 40;
+const MIN_TALK_MS = 250;
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -119,6 +131,21 @@ function cleanCat(cat) {
   };
 }
 
+/**
+ * Cloudflare's rate-limit binding, keyed by visitor IP. A missing IP (local `wrangler dev`)
+ * or a missing binding means no limiting, so tests and offline play are never affected.
+ */
+async function allowed(limiter, request) {
+  const ip = request.headers.get("CF-Connecting-IP");
+  if (!ip || !limiter) return true;
+  try {
+    const { success } = await limiter.limit({ key: ip });
+    return success;
+  } catch {
+    return true; // a limiter hiccup must never stop the game
+  }
+}
+
 function websocketUrl(request, roomCode) {
   const url = new URL(request.url);
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
@@ -142,8 +169,13 @@ export default {
     if (url.pathname === "/" && request.method === "GET") {
       return textResponse(
         [
-          "Warrior Cats online rooms",
+          "Warrior Cats room server",
           "",
+          "This is the back end for the online game. There is nothing to play here!",
+          "Open the game instead:",
+          "   https://warrior-cats-game.maast85.workers.dev",
+          "",
+          "API, for the curious:",
           "POST /api/room/create   make a room",
           "POST /api/room/join     join a room  ({\"roomCode\":\"ABCD\"})",
           "GET  /ws?room=ABCD      WebSocket for a room",
@@ -155,26 +187,28 @@ export default {
 
     try {
       if (url.pathname === "/api/room/create" && request.method === "POST") {
+        const body = await request.json().catch(() => ({}));
+
         const requiredKey = env.CREATE_ROOM_KEY;
         if (requiredKey) {
-          const body = await request.json().catch(() => ({}));
           const providedKey = request.headers.get("X-Create-Key") || body?.key || "";
           if (providedKey !== requiredKey) {
             return jsonResponse({ error: "Room creation is locked. Ask a grown-up for the key." }, 403);
           }
-          const roomCode = cleanCode(body?.roomCode) || newRoomCode();
-          const stub = env.ROOMS.get(env.ROOMS.idFromName(roomCode));
-          const created = await stub.fetch("https://room.internal/create", { method: "POST" });
-          if (!created.ok) return jsonResponse({ error: "Could not create the room." }, 500);
-          return jsonResponse({ roomCode, wsUrl: websocketUrl(request, roomCode) });
-        } else {
-          const body = await request.json().catch(() => ({}));
-          const roomCode = cleanCode(body?.roomCode) || newRoomCode();
-          const stub = env.ROOMS.get(env.ROOMS.idFromName(roomCode));
-          const created = await stub.fetch("https://room.internal/create", { method: "POST" });
-          if (!created.ok) return jsonResponse({ error: "Could not create the room." }, 500);
-          return jsonResponse({ roomCode, wsUrl: websocketUrl(request, roomCode) });
         }
+
+        if (!(await allowed(env.CREATE_LIMITER, request))) {
+          return jsonResponse(
+            { error: "That was a lot of new rooms! Wait a minute, then try again." },
+            429,
+          );
+        }
+
+        const roomCode = cleanCode(body?.roomCode) || newRoomCode();
+        const stub = env.ROOMS.get(env.ROOMS.idFromName(roomCode));
+        const created = await stub.fetch("https://room.internal/create", { method: "POST" });
+        if (!created.ok) return jsonResponse({ error: "Could not create the room." }, 500);
+        return jsonResponse({ roomCode, wsUrl: websocketUrl(request, roomCode) });
       }
 
       if (url.pathname === "/api/room/join" && request.method === "POST") {
@@ -182,6 +216,12 @@ export default {
         const roomCode = cleanCode(body?.roomCode);
         if (roomCode.length < ROOM_LENGTH) {
           return jsonResponse({ error: "That room code is too short." }, 400);
+        }
+        if (!(await allowed(env.JOIN_LIMITER, request))) {
+          return jsonResponse(
+            { error: "That was a lot of tries! Wait a minute, then check the letters again." },
+            429,
+          );
         }
         const stub = env.ROOMS.get(env.ROOMS.idFromName(roomCode));
         const found = await stub.fetch("https://room.internal/exists");
@@ -195,6 +235,9 @@ export default {
         const roomCode = cleanCode(url.searchParams.get("room"));
         if (roomCode.length < ROOM_LENGTH) {
           return textResponse("Missing room code.", 400);
+        }
+        if (!(await allowed(env.JOIN_LIMITER, request))) {
+          return textResponse("Too many connections from here. Wait a minute.", 429);
         }
         const stub = env.ROOMS.get(env.ROOMS.idFromName(roomCode));
         return stub.fetch(request);
@@ -226,6 +269,7 @@ export class Room {
 
     if (path.endsWith("/create")) {
       await this.ctx.storage.put("created", Date.now());
+      await this.ctx.storage.setAlarm(Date.now() + ROOM_TTL_MS);
       return jsonResponse({ ok: true });
     }
 
@@ -270,6 +314,18 @@ export class Room {
     }
 
     return textResponse("Not found.", 404);
+  }
+
+  /**
+   * Called when a room's time is up. While cats are still playing, the room keeps going;
+   * once the room is empty the code is forgotten, so old codes cannot be found or joined.
+   */
+  async alarm() {
+    if (this.ctx.getWebSockets().length > 0) {
+      await this.ctx.storage.setAlarm(Date.now() + ROOM_TTL_MS);
+      return;
+    }
+    await this.ctx.storage.deleteAll();
   }
 
   /** Everybody who has said hello, as { id: player }. */
@@ -319,20 +375,35 @@ export class Room {
     const player = this.attachment(ws);
     if (!player) return;
 
+    // One cat cannot talk or emote faster than four times a second. The game already
+    // sends slower than this; the cap is here so a modified client cannot flood a room.
+    const now = Date.now();
+    if (data.type === "action" || data.type === "chat") {
+      if (now - (player.talkAt || 0) < MIN_TALK_MS) return;
+      player.talkAt = now;
+      ws.serializeAttachment(player);
+    }
+
     if (data.type === "hello") {
+      const firstHello = !player.joined;
       player.name = cleanText(data.name, MAX_NAME) || "Cat";
       player.catData = cleanCat(data.catData);
       player.pos = cleanPosition(data.pos) ?? player.pos;
       player.joined = true;
       ws.serializeAttachment(player);
-      // Sending this to everyone makes a repeated hello harmless.
-      this.broadcast({ type: "player_joined", player: publicPlayer(player) }, ws);
+      // Only the first hello is passed on. Saying hello again just updates this cat's own
+      // name, cat and position, so repeating it cannot flood the room with arrivals.
+      if (firstHello) {
+        this.broadcast({ type: "player_joined", player: publicPlayer(player) }, ws);
+      }
       return;
     }
 
     if (!player.joined) return;
 
     if (data.type === "input") {
+      if (now - (player.inputAt || 0) < MIN_INPUT_MS) return;
+      player.inputAt = now;
       const pos = cleanPosition(data.pos);
       if (pos) player.pos = pos;
       player.facing = number(data.facing, 1) < 0 ? -1 : 1;
@@ -358,14 +429,19 @@ export class Room {
     if (data.type === "action") {
       const action = data.action;
       if (!action || typeof action !== "object") return;
+      const kind = cleanText(action.type, 24);
+      if (!kind) return;
+      const payload = action.data && typeof action.data === "object" ? action.data : {};
+      // Only a short line of text is passed on. Anything else a client invents is dropped,
+      // so a modified game cannot paint a giant speech bubble over another cat.
       this.broadcast(
         {
           type: "event",
           event: {
-            kind: cleanText(action.type, 24),
+            kind,
             from: player.id,
             name: player.name,
-            data: action.data && typeof action.data === "object" ? action.data : {},
+            data: { text: cleanText(payload.text, MAX_ACTION_TEXT) },
           },
         },
         ws,

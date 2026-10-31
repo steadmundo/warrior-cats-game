@@ -109,6 +109,15 @@ const emote = await emotePromise;
 if (emote.event.kind !== "emote" || emote.event.data.text !== "Mew!") fail("emote was not relayed");
 console.log("event works");
 
+// A cheeky client cannot paint a huge speech bubble, and invented fields are dropped.
+await new Promise((resolve) => setTimeout(resolve, 300));
+const longPromise = nextMessage(alice, (m) => m.type === "event", "Bob's long emote");
+bob.send(JSON.stringify({ type: "action", action: { type: "emote", data: { text: "x".repeat(400), secret: "nope" } } }));
+const long = await longPromise;
+if (long.event.data.text.length !== 40) fail(`long emote was ${long.event.data.text.length} chars, not 40`);
+if (long.event.data.secret !== undefined) fail("invented action data was passed through");
+console.log("long emotes are shortened");
+
 const leftPromise = nextMessage(alice, (m) => m.type === "player_left", "Bob leaving");
 bob.close();
 const left = await leftPromise;

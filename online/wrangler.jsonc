@@ -11,6 +11,10 @@
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["Room"] }
   ],
+  "ratelimits": [
+    { "name": "CREATE_LIMITER", "namespace_id": "1001", "simple": { "limit": 10, "period": 60 } },
+    { "name": "JOIN_LIMITER", "namespace_id": "1002", "simple": { "limit": 40, "period": 60 } }
+  ],
   "observability": {
     "enabled": true
   }
