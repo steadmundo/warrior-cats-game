@@ -6,8 +6,8 @@ extends Node2D
 ## computer at http://127.0.0.1:8787, or deploy it to Cloudflare; the server box at the
 ## bottom of the screen can point somewhere else. See Net.default_server_url().
 
-const SERVER_HINT := "Server (press Apply after changing)"
-const PARENT_HINT := "Parent key (only needed if room creation is locked)"
+const SERVER_HINT := "Room server (only change this if a grown-up says to)"
+const GROWNUP_HELP := "Grown-ups only. Leave the server alone unless you know it needs changing."
 
 var _status: Label
 var _slot_buttons: Array[Button] = []
@@ -18,10 +18,9 @@ var _step2_label: Label
 var _join_hint: Label
 var _room_input: LineEdit
 var _server_input: LineEdit
-var _parent_input: LineEdit
-var _parent_toggle: Button
-var _parent_panel: Panel
-var _parent_open := false
+var _grownup_toggle: Button
+var _grownup_panel: Panel
+var _grownup_open := false
 var _selected_slot := -1
 var _busy := false
 var _launching := false
@@ -80,6 +79,7 @@ func _ready() -> void:
 	_room_input.add_theme_font_size_override("font_size", 28)
 	_room_input.add_theme_color_override("font_color", Fx.INK)
 	_room_input.add_theme_color_override("caret_color", Fx.INK)
+	_dress_input(_room_input)
 	panel.add_child(_room_input)
 
 	_join_button = _make_button("Join", Color("8fd8ff"), Vector2(750, 226), Vector2(180, 58))
@@ -94,64 +94,53 @@ func _ready() -> void:
 	panel.add_child(_first_cat_button)
 
 	_status = Fx.ink_label("", 22, Fx.INK)
-	_status.position = Vector2(30, 322)
-	_status.size = Vector2(1000, 70)
+	_status.position = Vector2(30, 300)
+	_status.size = Vector2(1000, 56)
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	panel.add_child(_status)
 
-	var server_hint := Fx.ink_label(SERVER_HINT, 18, Fx.INK)
-	server_hint.position = Vector2(30, 408)
-	server_hint.size = Vector2(320, 26)
-	panel.add_child(server_hint)
+	# The room-server address lives behind one small button, so the steps the kids use
+	# stay big and simple. (There is no password any more — online rooms are open.)
+	_grownup_toggle = _make_button("Grown-ups", Color("e7c6ff"), Vector2(880, 406), Vector2(150, 48))
+	_grownup_toggle.add_theme_font_size_override("font_size", 20)
+	_grownup_toggle.pressed.connect(_toggle_grownup)
+	panel.add_child(_grownup_toggle)
+
+	_grownup_panel = Panel.new()
+	_grownup_panel.position = Vector2(30, 214)
+	_grownup_panel.size = Vector2(720, 160)
+	_grownup_panel.visible = false
+	_grownup_panel.add_theme_stylebox_override("panel", Fx.cute_panel(20))
+	panel.add_child(_grownup_panel)
+
+	var grownup_title := Fx.ink_label("For grown-ups", 22, Fx.PINK_DARK)
+	grownup_title.position = Vector2(16, 8)
+	_grownup_panel.add_child(grownup_title)
+
+	var grownup_help := Fx.ink_label(GROWNUP_HELP, 15, Fx.INK)
+	grownup_help.position = Vector2(16, 38)
+	grownup_help.size = Vector2(688, 22)
+	_grownup_panel.add_child(grownup_help)
+
+	var server_label := Fx.ink_label(SERVER_HINT, 16, Fx.INK)
+	server_label.position = Vector2(16, 68)
+	_grownup_panel.add_child(server_label)
 
 	_server_input = LineEdit.new()
-	_server_input.position = Vector2(30, 434)
-	_server_input.size = Vector2(440, 44)
+	_server_input.position = Vector2(16, 92)
+	_server_input.size = Vector2(500, 42)
 	_server_input.text = Net.server_url
-	_server_input.add_theme_font_size_override("font_size", 18)
+	_server_input.add_theme_font_size_override("font_size", 16)
 	_server_input.add_theme_color_override("font_color", Fx.INK)
 	_server_input.add_theme_color_override("caret_color", Fx.INK)
-	panel.add_child(_server_input)
+	_dress_input(_server_input)
+	_grownup_panel.add_child(_server_input)
 
-	var apply := _make_button("Apply", Color("e7c6ff"), Vector2(482, 432), Vector2(110, 46))
-	apply.add_theme_font_size_override("font_size", 20)
-	apply.pressed.connect(_apply_server)
-	panel.add_child(apply)
-
-	_parent_toggle = _make_button("Parent", Color("e7c6ff"), Vector2(610, 432), Vector2(130, 46))
-	_parent_toggle.add_theme_font_size_override("font_size", 20)
-	_parent_toggle.pressed.connect(_toggle_parent)
-	panel.add_child(_parent_toggle)
-
-	_parent_panel = Panel.new()
-	_parent_panel.position = Vector2(610, 340)
-	_parent_panel.size = Vector2(420, 80)
-	_parent_panel.visible = false
-	_parent_panel.add_theme_stylebox_override("panel", Fx.cute_panel(20))
-	panel.add_child(_parent_panel)
-
-	var parent_hint := Fx.ink_label(PARENT_HINT, 16, Fx.INK)
-	parent_hint.position = Vector2(12, 10)
-	parent_hint.size = Vector2(396, 22)
-	_parent_panel.add_child(parent_hint)
-
-	_parent_input = LineEdit.new()
-	_parent_input.position = Vector2(12, 34)
-	_parent_input.size = Vector2(296, 38)
-	_parent_input.placeholder_text = "Key"
-	_parent_input.secret = true
-	_parent_input.add_theme_font_size_override("font_size", 16)
-	_parent_input.add_theme_color_override("font_color", Fx.INK)
-	_parent_input.add_theme_color_override("caret_color", Fx.INK)
-	if Net.has_method("get") and "create_key" in Net:
-		_parent_input.text = Net.create_key
-	_parent_panel.add_child(_parent_input)
-
-	var parent_apply := _make_button("Save", Color("7ad67a"), Vector2(318, 34), Vector2(90, 38))
-	parent_apply.add_theme_font_size_override("font_size", 18)
-	parent_apply.pressed.connect(_apply_parent_key)
-	_parent_panel.add_child(parent_apply)
+	var server_apply := _make_button("Apply", Color("8fd8ff"), Vector2(530, 92), Vector2(100, 42))
+	server_apply.add_theme_font_size_override("font_size", 19)
+	server_apply.pressed.connect(_apply_server)
+	_grownup_panel.add_child(server_apply)
 
 	ui.add_child(Fx.centered_label("ESC = back to the title screen", 22, Color("fff6ec"), 656))
 
@@ -232,14 +221,20 @@ func _refresh_buttons() -> void:
 
 
 ## With no saved cat at all, the room buttons cannot work: offer the story's cat maker instead.
+## While the grown-ups box is open it takes the middle of the panel, so the kids' buttons
+## step aside instead of peeking out from behind it.
 func _refresh_flow() -> void:
 	var has_cat := _has_any_cat()
-	_first_cat_button.visible = not has_cat
-	_create_button.visible = has_cat
-	_join_button.visible = has_cat
-	_room_input.visible = has_cat
-	_join_hint.visible = has_cat
+	var show_rooms := has_cat and not _grownup_open
+	_first_cat_button.visible = not has_cat and not _grownup_open
+	_create_button.visible = show_rooms
+	_join_button.visible = show_rooms
+	_room_input.visible = show_rooms
+	_join_hint.visible = show_rooms
+	_step2_label.visible = not _grownup_open
 	_step2_label.text = "2. Make a room, or join one" if has_cat else "2. Make your first cat!"
+	if _status != null:
+		_status.visible = not _grownup_open
 
 
 func _has_any_cat() -> bool:
@@ -328,19 +323,13 @@ func _exit_tree() -> void:
 func _apply_server() -> void:
 	Net.set_server_url(_server_input.text)
 	_server_input.text = Net.server_url
-	_set_status("Server set to %s" % Net.server_url)
+	_set_status("Room server saved.")
 
-
-func _toggle_parent() -> void:
-	_parent_open = not _parent_open
-	if _parent_panel != null:
-		_parent_panel.visible = _parent_open
-
-
-func _apply_parent_key() -> void:
-	if Net.has_method("set_create_key"):
-		Net.set_create_key(_parent_input.text)
-	_set_status("Parent key saved." if _parent_input.text.strip_edges() != "" else "Parent key cleared.")
+func _toggle_grownup() -> void:
+	_grownup_open = not _grownup_open
+	if _grownup_panel != null:
+		_grownup_panel.visible = _grownup_open
+	_refresh_flow()
 
 
 func _set_status(text: String) -> void:
@@ -349,6 +338,14 @@ func _set_status(text: String) -> void:
 
 
 # --- Little UI helpers -----------------------------------------------------------------------
+
+## Text boxes in the cream-and-pink colours of the rest of the lobby, instead of the dark
+## default box, so they are easy for a kid to spot and read.
+func _dress_input(input: LineEdit) -> void:
+	input.add_theme_stylebox_override("normal", Fx.panel_style(Color("fff8f2"), Color("e9b9cc"), 12, 3))
+	input.add_theme_stylebox_override("focus", Fx.panel_style(Color.WHITE, Fx.PINK_DARK, 12, 3))
+	input.add_theme_color_override("font_placeholder_color", Color("b09aa2"))
+
 
 func _make_button(text: String, color: Color, pos: Vector2, button_size: Vector2) -> Button:
 	var button := Button.new()

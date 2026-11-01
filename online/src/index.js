@@ -40,7 +40,7 @@ const MIN_TALK_MS = 250;
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, X-Create-Key",
+  "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Max-Age": "86400",
 };
 
@@ -188,14 +188,6 @@ export default {
     try {
       if (url.pathname === "/api/room/create" && request.method === "POST") {
         const body = await request.json().catch(() => ({}));
-
-        const requiredKey = env.CREATE_ROOM_KEY;
-        if (requiredKey) {
-          const providedKey = request.headers.get("X-Create-Key") || body?.key || "";
-          if (providedKey !== requiredKey) {
-            return jsonResponse({ error: "Room creation is locked. Ask a grown-up for the key." }, 403);
-          }
-        }
 
         if (!(await allowed(env.CREATE_LIMITER, request))) {
           return jsonResponse(

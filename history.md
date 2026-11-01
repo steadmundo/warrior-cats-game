@@ -635,3 +635,28 @@ Workers: the game website and the online room server.
 ### What's next:
 - A proper chat box, so you can type what you want to say
 - Shared patrols, prey and ceremonies online
+
+## Session: 2026-11-01 (online lobby tidy-up)
+
+### What the creator asked for:
+The online screen should stay simple: step 1 pick a cat, step 2 make or join a room. The server
+address box was scary for kids, and the password idea turned out to be a weak speed bump that
+doesn't really stop anyone, so it was dropped.
+
+### What was built/changed:
+- **The lobby is just two big steps.** "1. Choose your cat" and "2. Make a room, or join one".
+  The room-server address moved inside a small **Grown-ups** button, and while that box is open
+  the kids' buttons step aside so the screen stays tidy.
+- **Friendlier text boxes.** The dark default input boxes are now cream and pink with a pink
+  border, matching the rest of the lobby, so they are easy to spot and read.
+- **No password or parent key.** Online rooms are open again, rate-limited per IP as before.
+  The worker, the game's network code and the tests no longer carry any key handling.
+
+### What you can do now:
+- Play online with a friend using a room code, exactly as before
+- A grown-up can still change the room server from the Grown-ups box if needed
+
+### What's next:
+- A proper chat box, so you can type what you want to say
+- Shared patrols, prey and ceremonies online
+- A cat code, so a cat can visit another computer

@@ -32,7 +32,6 @@ const CONNECT_TIMEOUT := 10.0
 const PING_EVERY := 20.0
 
 var server_url := ""
-var create_key := ""
 var in_room := false
 var connecting := false
 var room_code := ""
@@ -49,7 +48,6 @@ var _last_state_sent := 0
 
 func _ready() -> void:
 	_load_server_url()
-	_load_create_key()
 
 
 func _process(delta: float) -> void:
@@ -188,17 +186,6 @@ func set_server_url(value: String) -> void:
 	config.save(CONFIG_PATH)
 
 
-func set_create_key(value: String) -> void:
-	create_key = value.strip_edges()
-	var config := ConfigFile.new()
-	config.load(CONFIG_PATH)
-	if create_key == "":
-		config.erase_section_key("online", "create_key")
-	else:
-		config.set_value("online", "create_key", create_key)
-	config.save(CONFIG_PATH)
-
-
 func _load_server_url() -> void:
 	var from_command_line := ""
 	for argument in OS.get_cmdline_user_args():
@@ -318,8 +305,6 @@ func _post(path: String, payload: Dictionary) -> Dictionary:
 	http.timeout = CONNECT_TIMEOUT
 	add_child(http)
 	var headers := ["Content-Type: application/json"]
-	if path == "/api/room/create" and create_key != "":
-		headers.append("X-Create-Key: %s" % create_key)
 	var error := http.request(
 		server_url + path,
 		headers,
@@ -380,12 +365,6 @@ static func cat_payload(info: Dictionary) -> Dictionary:
 		"mood": str(look.get("mood", "happy")),
 		"paint": dabs,
 	}
-
-
-func _load_create_key() -> void:
-	var config := ConfigFile.new()
-	if config.load(CONFIG_PATH) == OK:
-		create_key = str(config.get_value("online", "create_key", "")).strip_edges()
 
 
 static func _hex(value, fallback: Color) -> String:

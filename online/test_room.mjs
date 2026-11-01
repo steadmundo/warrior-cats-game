@@ -7,7 +7,6 @@
  * It creates a room, connects two WebSocket players, and checks that joins,
  * movement and leaves are relayed.
  */
-
 const base = (process.argv[2] || process.env.SERVER || "http://127.0.0.1:8787").replace(/\/$/, "");
 
 function fail(message) {

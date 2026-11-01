@@ -46,7 +46,9 @@ Godot client                         Cloudflare Worker (online/)
   `WebSocketPeer`, sends local state at most every 60 ms, parses server messages, and emits
   signals used by the scenes. It also turns a save-slot cat into JSON (`cat_payload`).
 - **`game/scenes/online_lobby.tscn` / `game/scripts/online_lobby.gd`** — save-slot picker,
-  "Create a Room", room-code box, server URL field, status text.
+  "Create a Room", room-code box, status text. The room-server address is tucked behind the small
+  **Grown-ups** button, so kids only see the two big steps; while that box is open the room
+  buttons hide.
 - **`game/scenes/online_world.tscn` / `game/scripts/online_world.gd`** — shared camp/forest.
   Reuses `Territory.WorldFloor`, camp props, Clan NPCs and terrain art, but only spawns the
   local `TopDownPlayer` plus `RemotePlayer` nodes. One camera follows the local cat. The HUD has
@@ -109,8 +111,9 @@ On the title screen press **O** to open Online Play. Pick a saved cat, then:
 - On the other computer (or another Godot window), press **O**, pick a cat, type the code,
   and press **Join**.
 
-The default server is `http://127.0.0.1:8787`. The lobby's **Server** box changes it and saves
-to `user://online.cfg`. A `--server=` command-line argument overrides both:
+The default server is `http://127.0.0.1:8787`. The room-server address is edited in the
+lobby's **Grown-ups** box and saved to `user://online.cfg`. A `--server=` command-line
+argument overrides it for one run:
 
 ```bash
 godot --path game -- --server=http://192.168.1.20:8787
@@ -214,9 +217,6 @@ deployed worker. Single-player still works without any server.
 - Emotes are a fixed list (`EMOTES` in `online_world.gd`); names/cats are cleaned/truncated.
   The room only forwards `data.text` (≤40 chars) for an `action`, and drops any other fields a
   client invents.
-- Optional `CREATE_ROOM_KEY` secret: when set, `/api/room/create` needs an `X-Create-Key`
-  header. The lobby's **Parent** box saves one. It is a speed bump, not real auth — a key typed
-  into the web build lives in that browser only, but anyone reading the screen can see it.
 
 ## The website — Cloudflare Worker (2026-11-01)
 
